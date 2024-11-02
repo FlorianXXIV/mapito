@@ -1,3 +1,5 @@
+use std::env;
+
 use argparse::{parser, ArgumentParser, Store, StoreConst, StoreTrue};
 use reqwest::{blocking::Client, Url};
 use serde::{Deserialize, Serialize};
@@ -20,9 +22,12 @@ fn main() {
     //variables set by arguments
     let mut staging = 1;
     let mut search: String = String::new();
+    let mut dl_path: String = env::var("HOME").unwrap() + "/Downloads";
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
+
+        parser.set_description("A commandline tool to interact with the modrinth database, it allows you to search for mods and download them in a folder specified by you.");
 
         parser.refer(&mut staging)
             .add_option(&["-S", "--staging"], StoreConst(0), "If set, use the modrinth staging server rather than the normal api server. Used for testing");
@@ -31,6 +36,8 @@ fn main() {
             Store,
             "Search the Modrinth database for a certain project/mod.",
         );
+        parser.refer(&mut dl_path)
+            .add_option(&["-p","--path"], Store, "The path where you want to download any files to. Default: ~/Downloads");
 
         parser.parse_args_or_exit();
     }
@@ -50,6 +57,8 @@ fn main() {
             .json::<SearchResp>()
             .unwrap();
 
-        println!("Search Result: \n {query_response:?}");
+        for hit in query_response.hits {
+            println!("----\nName: {}, Latest Version: {}\n\n{}\n\nAuthor: {}\nId: {}\nDownloads: {}\n\n",hit["title"],hit["versions"][0],hit["description"], hit["author"], hit["project_id"], hit["downloads"]);
+        }
     }
 }
