@@ -1,3 +1,6 @@
+mod client;
+
+use crate::client::Downloader;
 use std::env;
 
 use argparse::{ArgumentParser, Store, StoreConst};
@@ -92,13 +95,7 @@ fn main() {
             serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap();
         let filename = download_url["files"][0]["filename"].as_str().unwrap();
         let path = &(dl_path + "/" + filename);
-        let _ = download_file(client, path, download_url["files"][0][filename].as_str().unwrap()).unwrap();
+        let _ = client.download_file(path, download_url["files"][0][filename].as_str().unwrap()).unwrap();
     }
 }
 
-
-fn download_file(client: Client, path: &str, url: &str) -> Result<()> {
-    let body = client.get(url).send().unwrap().bytes().unwrap();
-    let _ = std::fs::write(path, &body).unwrap();
-    Ok(())
-}
