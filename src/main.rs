@@ -68,16 +68,16 @@ fn main() {
             .unwrap()
             .json::<SearchResp>()
             .unwrap();
-
+        
         for hit in query_response.hits {
             println!(
-                "----\nName: {}, {}\n\n{}\n\nAuthor: {}\nId: {}\nDownloads: {}\n\n",
-                hit["title"],
-                hit["versions"][0],
-                hit["description"],
-                hit["author"],
-                hit["project_id"],
-                hit["downloads"]
+                "{}|{}, MC-{}, by: {}, downloads: {}\n{}\n",
+                hit["project_id"].to_string().replace("\"", ""),
+                hit["title"].to_string().replace("\"", ""),
+                hit["versions"][0].to_string().replace("\"", ""),
+                hit["author"].to_string().replace("\"", ""),
+                hit["downloads"].to_string().replace("\"", ""),
+                hit["description"].to_string().replace("\"", ""),
             );
         }
     }
