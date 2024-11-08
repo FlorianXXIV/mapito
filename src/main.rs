@@ -4,14 +4,20 @@ use crate::client::Downloader;
 use std::env;
 
 use argparse::{ArgumentParser, Store, StoreConst};
-use reqwest::{blocking::Client, Result, Url};
+use reqwest::{blocking::Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const API_URL: [&str; 2] = [
-    "https://staging-api.modrinth.com/",
-    "https://api.modrinth.com/",
+    "https://staging-api.modrinth.com/v2",
+    "https://api.modrinth.com/v2",
 ];
+//API ENDPOINTS
+const SEARCH: &str = "/search";
+const PROJECT: &str = "/project";
+const VERSION: &str = "/version";
+//API PARAMS
+const QUERY: &str = "query";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SearchResp {
@@ -58,8 +64,8 @@ fn main() {
 
     if !search.is_empty() {
         let query = Url::parse_with_params(
-            (API_URL[staging].to_owned() + &"v2/search").as_str(),
-            &[("query", search)],
+            (API_URL[staging].to_owned() + SEARCH).as_str(),
+            &[(QUERY, search)],
         )
         .unwrap();
         let query_response = client
@@ -85,12 +91,12 @@ fn main() {
     }
 
     if !dl_id.is_empty() {
-        let query = Url::parse(&(API_URL[staging].to_owned() + "v2/project/" + &dl_id)).unwrap();
+        let query = Url::parse(&(API_URL[staging].to_owned() + PROJECT + &dl_id)).unwrap();
         let query_response: Value =
             serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap();
         let latest_version = query_response["versions"][0].clone();
         let query = Url::parse(
-            &(API_URL[staging].to_owned() + "v2/version/" + latest_version.as_str().unwrap()),
+            &(API_URL[staging].to_owned() + VERSION + latest_version.as_str().unwrap()),
         )
         .unwrap();
         let download_url: Value =
