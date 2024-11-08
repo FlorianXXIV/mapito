@@ -70,11 +70,13 @@ fn main() {
             .unwrap();
         
         for hit in query_response.hits {
+            let versions = hit["versions"].as_array().unwrap();
+            let latest = versions[versions.len()-1].clone();
             println!(
                 "{}|{}, MC-{}, by: {}, downloads: {}\n{}\n",
                 hit["project_id"].to_string().replace("\"", ""),
                 hit["title"].to_string().replace("\"", ""),
-                hit["versions"][0].to_string().replace("\"", ""),
+                latest.to_string().replace("\"", ""),
                 hit["author"].to_string().replace("\"", ""),
                 hit["downloads"].to_string().replace("\"", ""),
                 hit["description"].to_string().replace("\"", ""),
