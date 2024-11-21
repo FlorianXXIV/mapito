@@ -33,6 +33,7 @@ fn main() {
     let mut search: String = String::new();
     let mut dl_path: String = env::var("HOME").unwrap() + "/Downloads";
     let mut dl_id: String = String::new();
+    let mut pack_path: String = String::new();
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
