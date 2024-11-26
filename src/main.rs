@@ -92,19 +92,19 @@ fn main() {
     }
 
     if !dl_id.is_empty() {
-        let query = Url::parse(&(API_URL[staging].to_owned() + PROJECT + &dl_id)).unwrap();
+        let query = Url::parse(&(API_URL[staging].to_owned() + PROJECT + "/" + &dl_id)).unwrap();
         let query_response: Value =
             serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap();
         let latest_version = query_response["versions"][0].clone();
         let query = Url::parse(
-            &(API_URL[staging].to_owned() + VERSION + latest_version.as_str().unwrap()),
+            &(API_URL[staging].to_owned() + VERSION + "/" + latest_version.as_str().unwrap()),
         )
         .unwrap();
         let download_url: Value =
             serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap();
         let filename = download_url["files"][0]["filename"].as_str().unwrap();
         let path = &(dl_path + "/" + filename);
-        let _ = client.download_file(path, download_url["files"][0][filename].as_str().unwrap()).unwrap();
+        let _ = client.download_file(path, download_url["files"][0]["url"].as_str().unwrap()).unwrap();
     }
 }
 
