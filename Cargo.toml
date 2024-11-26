@@ -1,6 +1,6 @@
 [package]
 name = "modrinth-apitool"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["FlorianXXIV"]
 description = "A command line interface for interacting with the modrinth api, currently it allows you to search the database for projects, in future it may allow you to download mods and create modlists to auto update."
