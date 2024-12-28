@@ -2,6 +2,7 @@ mod client;
 
 use crate::client::Downloader;
 use std::env;
+use colored::Colorize;
 
 use argparse::{ArgumentParser, Store, StoreConst};
 use reqwest::{blocking::Client, Url};
@@ -38,10 +39,14 @@ fn main() {
     {
         let mut parser = ArgumentParser::new();
 
-        parser.set_description("A commandline tool to interact with the modrinth database, it allows you to search for mods and download them in a folder specified by you.");
+        parser.set_description("A commandline tool to interact with the modrinth \
+            database, it allows you to search for mods and download them in a \
+            folder specified by you.");
 
         parser.refer(&mut staging)
-            .add_option(&["-S", "--staging"], StoreConst(0), "If set, use the modrinth staging server rather than the normal api server. Used for testing");
+            .add_option(&["-S", "--staging"], StoreConst(0), "If set, use the \
+                modrinth staging server rather than the normal api server. Used \
+                for testing");
         parser.refer(&mut search).add_option(
             &["-s", "--search"],
             Store,
@@ -50,7 +55,8 @@ fn main() {
         parser.refer(&mut dl_path).add_option(
             &["-p", "--path"],
             Store,
-            "The path where you want to download any files to. Default: ~/Downloads",
+            "The path where you want to download any files to. Default: \
+            ~/Downloads",
         );
         parser.refer(&mut dl_id).add_option(
             &["-d", "--download"],
@@ -81,12 +87,12 @@ fn main() {
             let latest = versions[versions.len()-1].clone();
             println!(
                 "{}|{}, MC-{}, by: {}, downloads: {}\n{}\n",
-                hit["project_id"].to_string().replace("\"", ""),
+                hit["project_id"].to_string().replace("\"", "").green(),
                 hit["title"].to_string().replace("\"", ""),
                 latest.to_string().replace("\"", ""),
                 hit["author"].to_string().replace("\"", ""),
                 hit["downloads"].to_string().replace("\"", ""),
-                hit["description"].to_string().replace("\"", ""),
+                hit["description"].to_string().replace("\"", "").bright_black(),
             );
         }
     }
