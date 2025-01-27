@@ -107,9 +107,10 @@ fn search_package(client: &Client, query: String, staging: usize) {
             let versions = hit["versions"].as_array().unwrap();
             let latest = versions[versions.len()-1].clone();
             println!(
-                "{}|{}, MC-{}, by: {}, downloads: {}\n{}\n",
+                "{}|{},{}, MC-{}, by: {}, downloads: {}\n{}\n",
                 hit["slug"].to_string().replace("\"", "").green(),
                 hit["title"].to_string().replace("\"", ""),
+                hit["project_type"].to_string().replace("\"",""),
                 latest.to_string().replace("\"", ""),
                 hit["author"].to_string().replace("\"", ""),
                 hit["downloads"].to_string().replace("\"", ""),
