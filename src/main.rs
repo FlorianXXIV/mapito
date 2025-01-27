@@ -61,7 +61,7 @@ fn main() {
         parser.refer(&mut dl_id).add_option(
             &["-d", "--download"],
             Store,
-            "Download the mod given by ID.",
+            "Download the mod given by it's ID/Slug.",
         );
 
         parser.parse_args_or_exit();
@@ -70,31 +70,7 @@ fn main() {
     let client = Client::new();
 
     if !search.is_empty() {
-        let query = Url::parse_with_params(
-            (API_URL[staging].to_owned() + SEARCH).as_str(),
-            &[(QUERY, search)],
-        )
-        .unwrap();
-        let query_response = client
-            .get(query)
-            .send()
-            .unwrap()
-            .json::<SearchResp>()
-            .unwrap();
-        
-        for hit in query_response.hits {
-            let versions = hit["versions"].as_array().unwrap();
-            let latest = versions[versions.len()-1].clone();
-            println!(
-                "{}|{}, MC-{}, by: {}, downloads: {}\n{}\n",
-                hit["project_id"].to_string().replace("\"", "").green(),
-                hit["title"].to_string().replace("\"", ""),
-                latest.to_string().replace("\"", ""),
-                hit["author"].to_string().replace("\"", ""),
-                hit["downloads"].to_string().replace("\"", ""),
-                hit["description"].to_string().replace("\"", "").bright_black(),
-            );
-        }
+        search_package(&client, search, staging);
     }
 
     if !dl_id.is_empty() {
@@ -114,3 +90,30 @@ fn main() {
     }
 }
 
+fn search_package(client: &Client, query: String, staging: usize) {
+    let query = Url::parse_with_params(
+            (API_URL[staging].to_owned() + SEARCH).as_str(),
+            &[(QUERY, query)],
+        )
+        .unwrap();
+        let query_response = client
+            .get(query)
+            .send()
+            .unwrap()
+            .json::<SearchResp>()
+            .unwrap();
+        
+        for hit in query_response.hits {
+            let versions = hit["versions"].as_array().unwrap();
+            let latest = versions[versions.len()-1].clone();
+            println!(
+                "{}|{}, MC-{}, by: {}, downloads: {}\n{}\n",
+                hit["slug"].to_string().replace("\"", "").green(),
+                hit["title"].to_string().replace("\"", ""),
+                latest.to_string().replace("\"", ""),
+                hit["author"].to_string().replace("\"", ""),
+                hit["downloads"].to_string().replace("\"", ""),
+                hit["description"].to_string().replace("\"", "").bright_black(),
+            );
+        }
+}
