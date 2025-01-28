@@ -6,6 +6,8 @@ A tool to interact with the modrinth api using rust reqwest
     - With custom download Path
     - Can download latest version
     - Can download latest version for specific mc version
+    - select for the modloader you want
+    - select for beta alpha or release builds
 ## Planned
 Planned improvements are documented under issues, they are tagged with enhancment
 ## Install
