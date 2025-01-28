@@ -1,9 +1,9 @@
 [package]
 name = "modrinth-apitool"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 authors = ["FlorianXXIV"]
-description = "A command line interface for interacting with the modrinth api, currently it allows you to search the database for projects, in future it may allow you to download mods and create modlists to auto update."
+description = "A command line interface for interacting with the modrinth api to manage you minecraft mods more easily."
 license = "AGPL-3.0"
 repository = "https://github.com/FlorianXXIV/modrinth-apitool"
 
@@ -13,3 +13,4 @@ colored = "2.2.0"
 reqwest = {version="0.12",features=["blocking","json"]}
 serde = {version="1.0.214",features=["derive"]}
 serde_json = "1.0.132"
+toml = "0.8.19"
