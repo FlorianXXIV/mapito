@@ -1,12 +1,27 @@
-use std::{env, fs::{create_dir_all, File}, io::{ErrorKind, Read, Write}, str::FromStr, string::ParseError};
 use serde::{Deserialize, Serialize};
+use std::{
+    env,
+    fs::{create_dir_all, File},
+    io::{ErrorKind, Read, Write},
+    str::FromStr,
+};
 use toml;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum VT {
     RELEASE,
     BETA,
-    ALPHA
+    ALPHA,
+}
+
+impl VT {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::RELEASE => String::from_str("release").expect("from_str"),
+            Self::BETA => String::from_str("beta").expect("from_str"),
+            Self::ALPHA => String::from_str("alpha").expect("from_str"),
+        }
+    }
 }
 
 impl FromStr for VT {
@@ -19,7 +34,7 @@ impl FromStr for VT {
             "BETA" => Ok(Self::BETA),
             "alpha" => Ok(Self::ALPHA),
             "ALPHA" => Ok(Self::ALPHA),
-            _ => Err("invalid version type".to_string())
+            _ => Err("invalid version type".to_string()),
         }
     }
 }
@@ -28,22 +43,18 @@ impl FromStr for VT {
 struct Configuration {
     release_type: VT,
     download_path: String,
-    pack_path: String
+    pack_path: String,
 }
 
-pub fn configure() -> Result<(VT, String, String), String>{
-    let config: Configuration; 
+pub fn configure() -> Result<(VT, String, String), String> {
+    let config: Configuration;
 
     let config_path = env::var("HOME").unwrap() + "/.config/modrinth-apitool";
     let mut config_fd = match File::open(config_path + "/config.toml") {
-        Ok(v) => {
-            v
-        },
-        Err(e) => {
-            match e.kind() {
-                ErrorKind::NotFound => create_config().expect("create_config"),
-                ek => return Err(ek.to_string())
-            }
+        Ok(v) => v,
+        Err(e) => match e.kind() {
+            ErrorKind::NotFound => create_config().expect("create_config"),
+            ek => return Err(ek.to_string()),
         },
     };
 
@@ -57,13 +68,14 @@ pub fn configure() -> Result<(VT, String, String), String>{
 
 fn create_config() -> Result<File, std::io::Error> {
     create_dir_all(env::var("HOME").unwrap() + "/.config/modrinth-apitool")?;
-    let mut config = File::create(env::var("HOME").unwrap() + "/.config/modrinth-apitool/config.toml")?;
+    let mut config =
+        File::create(env::var("HOME").unwrap() + "/.config/modrinth-apitool/config.toml")?;
     let defaults = Configuration {
         release_type: VT::RELEASE,
         download_path: env::var("HOME").unwrap() + "/Downloads",
-        pack_path: env::var("HOME").unwrap() + "/.config/modrinth-apitool/packs"
+        pack_path: env::var("HOME").unwrap() + "/.config/modrinth-apitool/packs",
     };
-    write!(&mut config, "{}",toml::to_string(&defaults).unwrap())?;
+    write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
 
     return Ok(config);
 }
