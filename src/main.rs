@@ -31,7 +31,7 @@ struct SearchResp {
 
 fn main() {
     //variables set by arguments
-    let (rt,mut dl_path, pack_path) = configure().expect("configure: ");
+    let (mut vt,mut dl_path, mut pack_path) = configure().expect("configure");
     let mut staging = 1;
     let mut search: String = String::new();
     let mut dl_id: String = String::new();
@@ -68,6 +68,16 @@ fn main() {
             &["-v", "--mc-ver"], 
             Store,
             "Set the Minecraft version that you want to download the Mod for."
+        );
+        parser.refer(&mut vt).add_option(
+            &["-vt", "--version-type"],
+            Store,
+            "Chose verion type, one of: release, beta, alpha"
+        );
+        parser.refer(&mut pack_path).add_option(
+            &["-pp", "--pack-path"],
+            Store,
+            "Path where pack files are stored"
         );
         parser.parse_args_or_exit();
     }
