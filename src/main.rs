@@ -1,10 +1,11 @@
 mod client;
+mod config;
 
 use crate::client::Downloader;
-use std::env;
 use colored::Colorize;
 
 use argparse::{ArgumentParser, Store, StoreConst};
+use config::configure;
 use reqwest::{blocking::Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -30,12 +31,11 @@ struct SearchResp {
 
 fn main() {
     //variables set by arguments
+    let (rt,mut dl_path, pack_path) = configure().expect("configure: ");
     let mut staging = 1;
     let mut search: String = String::new();
-    let mut dl_path: String = env::var("HOME").unwrap() + "/Downloads";
     let mut dl_id: String = String::new();
     let mut mc_ver: String = String::new();
-    let mut pack_path: String = String::new();
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
