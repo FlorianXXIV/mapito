@@ -1,7 +1,6 @@
 mod client;
 
 use crate::client::Downloader;
-use core::panic;
 use std::env;
 use colored::Colorize;
 
@@ -123,36 +122,33 @@ fn search_package(client: &Client, query: String, staging: usize) {
 fn get_dl_url(dl_id: String, client: &Client, mc_ver: String, staging: usize) 
     -> Result<Value, &str> 
 {
-    let query = Url::parse(
-        &(API_URL[staging].to_owned() + PROJECT + "/" + &dl_id)
-        ).unwrap();
-
-    let project: Value =
-        serde_json::from_str(
-            &client.get(query).send().unwrap().text().unwrap()
-        ).unwrap();
+    let project: Value = request_api(client, staging, &(PROJECT.to_owned() + "/" + &dl_id));
     
     let versions = project["versions"].as_array().unwrap();
     let mut download_url: Value = Value::Null;
     if mc_ver.is_empty() {
         let latest_version = versions.last().unwrap().clone();
-        let query = Url::parse(
-            &(API_URL[staging].to_owned() + VERSION + "/" + latest_version.as_str().unwrap()),
-        ).unwrap();
 
-        download_url =
-            serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap();
+        download_url = request_api(
+            client,
+            staging,
+            &(VERSION.to_owned() + "/" + latest_version.as_str().unwrap())
+        );
     } else {
         if project["game_versions"].as_array().unwrap().iter().any(|e| *e == *mc_ver) {
             for version in versions.into_iter().rev() {
-                let query = Url::parse(
-                    &(API_URL[staging].to_owned() + VERSION + "/" + version.as_str().unwrap())
-                ).unwrap();
-                let resp_ver: Value = 
-                    serde_json::from_str(
-                        &client.get(query).send().unwrap().text().unwrap()
-                    ).unwrap();
-                if resp_ver["game_versions"].as_array().unwrap().iter().any(|e| *e == *mc_ver) {
+                let resp_ver: Value = request_api(
+                    client,
+                    staging,
+                    &(VERSION.to_owned() + "/" + version.as_str().unwrap())
+                );
+
+                if resp_ver["game_versions"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|e| *e == *mc_ver) 
+                {
                     download_url = resp_ver;
                     break;
                 }
@@ -164,5 +160,18 @@ fn get_dl_url(dl_id: String, client: &Client, mc_ver: String, staging: usize)
     if download_url.is_null() {
         return Err("Did not find Project");
     }
-    return Ok(download_url);
+    Ok(download_url)
+}
+
+fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
+    let query = Url::parse(&(API_URL[staging].to_owned() + endpoint)).unwrap();
+
+    serde_json::from_str(
+        &client
+            .get(query)
+            .send()
+            .unwrap()
+            .text()
+            .unwrap()
+        ).unwrap()
 }
