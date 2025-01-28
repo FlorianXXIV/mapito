@@ -8,7 +8,7 @@ use crate::client::Downloader;
 use colored::Colorize;
 
 use argparse::{ArgumentParser, Store, StoreConst};
-use config::{configure, VT};
+use config::{configure, VT, LOADER};
 use reqwest::{blocking::Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -34,7 +34,7 @@ struct SearchResp {
 
 fn main() {
     //variables set by arguments
-    let (mut vt, mut dl_path, mut pack_path) = configure().expect("configure");
+    let (mut vt, mut dl_path, mut pack_path, mut loader) = configure().expect("configure");
     let mut staging = 1;
     let mut search: String = String::new();
     let mut dl_id: String = String::new();
@@ -94,6 +94,12 @@ fn main() {
             "Path where pack files are stored",
         );
 
+        parser.refer(&mut loader).add_option(
+            &["-l", "--loader"],
+            Store,
+            "The modloader to be used with the mod"
+        );
+
         parser.parse_args_or_exit();
     }
 
@@ -105,15 +111,16 @@ fn main() {
 
     if !dl_id.is_empty() {
         let dl_version: Value =
-            get_dl_url(dl_id, &client, mc_ver, vt, staging).expect("get_dl_url");
+            get_dl_url(dl_id, &client, mc_ver, vt, &loader, staging).expect("get_dl_url");
         let mut dl_size = (dl_version["files"][0]["size"].as_f64().unwrap() / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
-            "Downloading: {}, {}\ntype: {},downloads: {}\nsize: {} MiB",
-            dl_version["name"].to_string(),
-            dl_version["version_number"].to_string(),
-            dl_version["version_type"].to_string(),
-            dl_version["downloads"].to_string(),
+            "Downloading: {}, {}\ntype: {}, downloads: {}, loader: {}\nsize: {} MiB",
+            dl_version["name"].to_string().replace("\"", ""),
+            dl_version["version_number"].to_string().replace("\"", ""),
+            dl_version["version_type"].to_string().replace("\"", ""),
+            dl_version["downloads"].to_string().replace("\"", ""),
+            dl_version["loaders"].to_string().replace("\"", ""),
             dl_size
         );
 
@@ -167,49 +174,40 @@ fn get_dl_url(
     client: &Client,
     mc_ver: String,
     vt: VT,
+    loader: &LOADER,
     staging: usize,
-) -> Result<Value, &str> {
-    let project: Value = request_api(client, staging, &(PROJECT.to_owned() + "/" + &dl_id));
-    let versions = project["versions"].as_array().unwrap();
+) -> Result<Value, String> {
+    let versions = request_api(client, staging, &(PROJECT.to_owned() + "/" + &dl_id + VERSION));
     let mut dl_version: Value = Value::Null;
     if mc_ver.is_empty() {
-        let latest_version = versions.last().unwrap().clone();
-
-        dl_version = request_api(
-            client,
-            staging,
-            &(VERSION.to_owned() + "/" + latest_version.as_str().unwrap()),
-        );
+        let mut latest_version = Value::Null;
+        for version in versions.as_array().unwrap().into_iter() {
+            if version["loaders"].as_array().unwrap().iter().any(|e| *e == *loader.to_string()) {
+                latest_version = version.clone();
+                break;
+            }
+        };
+        if latest_version.is_null() {
+            return Err("Loader not available".to_string());
+        }
+        dl_version = latest_version;
     } else {
-        if project["game_versions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|e| *e == *mc_ver)
-        {
-            let versions = request_api(
-                client,
-                staging,
-                &(PROJECT.to_owned() + "/" + &dl_id + VERSION),
-            );
             for version in versions.as_array().unwrap().into_iter() {
                 if version["game_versions"]
                     .as_array()
                     .unwrap()
                     .iter()
-                    .any(|e| *e == *mc_ver)
+                    .any(|e| e.to_string() == mc_ver)
                     && version["version_type"] == vt.to_string()
+                    && version["loaders"].as_array().unwrap().iter().any(|e| *e == *loader.to_string())
                 {
                     dl_version = version.clone();
                     break;
                 }
             }
-        } else {
-            return Err("Minecraft version not Available!");
-        }
     }
     if dl_version.is_null() {
-        return Err("Did not find Project");
+        return Err("Did not find Project".to_string());
     }
     Ok(dl_version)
 }

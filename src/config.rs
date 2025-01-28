@@ -28,13 +28,40 @@ impl FromStr for VT {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "release" => Ok(Self::RELEASE),
-            "RELEASE" => Ok(Self::RELEASE),
-            "beta" => Ok(Self::BETA),
-            "BETA" => Ok(Self::BETA),
-            "alpha" => Ok(Self::ALPHA),
-            "ALPHA" => Ok(Self::ALPHA),
+            "release" | "RELEASE" => Ok(Self::RELEASE),
+            "beta" | "BETA" => Ok(Self::BETA),
+            "alpha" | "ALPHA" => Ok(Self::ALPHA),
             _ => Err("invalid version type".to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum LOADER {
+    FABRIC,
+    QUILT,
+    NEOFORGE
+}
+
+impl LOADER {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::FABRIC => "fabric".to_string(),
+            Self::QUILT => "quilt".to_string(),
+            Self::NEOFORGE => "neoforge".to_string()
+        }
+    }
+}
+
+impl FromStr for LOADER {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "fabric" | "FABRIC" => Ok(Self::FABRIC),
+            "neoforge" | "NEOFORGE" => Ok(Self::NEOFORGE),
+            "quilt" | "QUILT" => Ok(Self::QUILT),
+            "forge" | "FORGE" => Err("This tool does not support Forge".to_string()),
+            _ => Err("Unknown Modloader".to_string())
         }
     }
 }
@@ -42,11 +69,12 @@ impl FromStr for VT {
 #[derive(Serialize, Deserialize)]
 struct Configuration {
     release_type: VT,
+    loader: LOADER,
     download_path: String,
     pack_path: String,
 }
 
-pub fn configure() -> Result<(VT, String, String), String> {
+pub fn configure() -> Result<(VT, String, String, LOADER), String> {
     let config: Configuration;
 
     let config_path = env::var("HOME").unwrap() + "/.config/modrinth-apitool";
@@ -63,7 +91,7 @@ pub fn configure() -> Result<(VT, String, String), String> {
 
     config = toml::from_str(body.as_str()).expect("toml::from_str");
 
-    Ok((config.release_type, config.download_path, config.pack_path))
+    Ok((config.release_type, config.download_path, config.pack_path, config.loader))
 }
 
 fn create_config() -> Result<File, std::io::Error> {
@@ -74,6 +102,7 @@ fn create_config() -> Result<File, std::io::Error> {
         release_type: VT::RELEASE,
         download_path: env::var("HOME").unwrap() + "/Downloads",
         pack_path: env::var("HOME").unwrap() + "/.config/modrinth-apitool/packs",
+        loader: LOADER::FABRIC,
     };
     write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
 
