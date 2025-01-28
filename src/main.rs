@@ -1,6 +1,9 @@
 mod client;
 mod config;
 
+use core::panic;
+use std::{char, u64};
+
 use crate::client::Downloader;
 use colored::Colorize;
 
@@ -9,6 +12,7 @@ use config::{configure, VT};
 use reqwest::{blocking::Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use text_io::try_read;
 
 const API_URL: [&str; 2] = [
     "https://staging-api.modrinth.com/v2",
@@ -101,13 +105,37 @@ fn main() {
     }
 
     if !dl_id.is_empty() {
-        let download_url: Value =
+        let dl_version: Value =
             get_dl_url(dl_id, &client, mc_ver, vt, staging).expect("get_dl_url");
-        let filename = download_url["files"][0]["filename"].as_str().unwrap();
-        let path = &(dl_path + "/" + filename);
-        let _ = client
-            .download_file(path, download_url["files"][0]["url"].as_str().unwrap())
-            .unwrap();
+        let mut dl_size = (dl_version["files"][0]["size"].as_f64().unwrap() / 1048576 as f64).to_string();
+        dl_size.truncate(6);
+        print!(
+            "Downloading: {}, {}\ntype: {},downloads: {}\nsize: {} MiB\n proceed? [y,n]: ",
+            dl_version["name"].to_string(),
+            dl_version["version_number"].to_string(),
+            dl_version["version_type"].to_string(),
+            dl_version["downloads"].to_string(),
+            dl_size
+        );
+        let request:char = match try_read!("{}\n") {
+            Ok(v) => {v},
+            Err(e) => {
+                println!("{}", e);
+                'n'
+            },
+        };
+        match request {
+            'y' | 'Y' => {
+                println!("Downloading to {}", &dl_path);
+                let filename = dl_version["files"][0]["filename"].as_str().unwrap();
+                let path = &(dl_path + "/" + filename);
+                let _ = client
+                    .download_file(path, dl_version["files"][0]["url"].as_str().unwrap())
+                    .unwrap();
+            },
+            'n' | 'N' => println!("Aborting"),
+            _ => panic!("Invalid option"),
+        };
     }
 }
 
@@ -152,11 +180,11 @@ fn get_dl_url(
 ) -> Result<Value, &str> {
     let project: Value = request_api(client, staging, &(PROJECT.to_owned() + "/" + &dl_id));
     let versions = project["versions"].as_array().unwrap();
-    let mut download_url: Value = Value::Null;
+    let mut dl_version: Value = Value::Null;
     if mc_ver.is_empty() {
         let latest_version = versions.last().unwrap().clone();
 
-        download_url = request_api(
+        dl_version = request_api(
             client,
             staging,
             &(VERSION.to_owned() + "/" + latest_version.as_str().unwrap()),
@@ -181,18 +209,18 @@ fn get_dl_url(
                     .any(|e| *e == *mc_ver)
                     && version["version_type"] == vt.to_string()
                 {
-                    download_url = version.clone();
+                    dl_version = version.clone();
                     break;
                 }
             }
         } else {
-            return Err("Minecraf version not Available!");
+            return Err("Minecraft version not Available!");
         }
     }
-    if download_url.is_null() {
+    if dl_version.is_null() {
         return Err("Did not find Project");
     }
-    Ok(download_url)
+    Ok(dl_version)
 }
 
 fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
