@@ -2,7 +2,7 @@ mod client;
 mod config;
 
 use core::panic;
-use std::{char, u64};
+use std::{char, io, u64};
 
 use crate::client::Downloader;
 use colored::Colorize;
@@ -12,7 +12,6 @@ use config::{configure, VT};
 use reqwest::{blocking::Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use text_io::try_read;
 
 const API_URL: [&str; 2] = [
     "https://staging-api.modrinth.com/v2",
@@ -109,33 +108,25 @@ fn main() {
             get_dl_url(dl_id, &client, mc_ver, vt, staging).expect("get_dl_url");
         let mut dl_size = (dl_version["files"][0]["size"].as_f64().unwrap() / 1048576 as f64).to_string();
         dl_size.truncate(6);
-        print!(
-            "Downloading: {}, {}\ntype: {},downloads: {}\nsize: {} MiB\n proceed? [y,n]: ",
+        println!(
+            "Downloading: {}, {}\ntype: {},downloads: {}\nsize: {} MiB",
             dl_version["name"].to_string(),
             dl_version["version_number"].to_string(),
             dl_version["version_type"].to_string(),
             dl_version["downloads"].to_string(),
             dl_size
         );
-        let request:char = match try_read!("{}\n") {
-            Ok(v) => {v},
-            Err(e) => {
-                println!("{}", e);
-                'n'
-            },
-        };
-        match request {
-            'y' | 'Y' => {
-                println!("Downloading to {}", &dl_path);
+
+        if confirm_input() {
+            println!("Downloading to {}", &dl_path);
                 let filename = dl_version["files"][0]["filename"].as_str().unwrap();
                 let path = &(dl_path + "/" + filename);
                 let _ = client
                     .download_file(path, dl_version["files"][0]["url"].as_str().unwrap())
                     .unwrap();
-            },
-            'n' | 'N' => println!("Aborting"),
-            _ => panic!("Invalid option"),
-        };
+        } else {
+            println!("Aborting")
+        }
     }
 }
 
@@ -227,4 +218,23 @@ fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
     let query = Url::parse(&(API_URL[staging].to_owned() + endpoint)).unwrap();
 
     serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap()
+}
+
+fn confirm_input() -> bool {
+    println!("proceed? [Y,n]");
+    let stdin = io::stdin();
+    let buf = &mut String::new();
+    let _ = stdin.read_line(buf);
+    let chars:Vec<char> = buf.chars().collect();
+
+    let request:char = match chars.first() {
+        Some(c) => {*c},
+        None => {'y'},
+    };
+        
+    match request {
+        'y' | 'Y' | '\n' => true,
+        'n' | 'N' => false,
+        _ => panic!("invalid option"),
+    }
 }
