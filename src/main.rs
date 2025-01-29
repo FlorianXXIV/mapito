@@ -8,7 +8,10 @@ use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst};
 use config::configure;
-use mrapi::{defines::Version, interactions::{get_dl_url, print_project_info, search_package}};
+use mrapi::{
+    defines::Version,
+    interactions::{get_dl_url, print_project_info, search_package},
+};
 use reqwest::blocking::Client;
 
 fn main() {
@@ -77,13 +80,13 @@ fn main() {
         parser.refer(&mut loader).add_option(
             &["-l", "--loader"],
             Store,
-            "The modloader to be used with the mod"
+            "The modloader to be used with the mod",
         );
 
         parser.refer(&mut project_slug).add_option(
             &["-i", "--project-info"],
             Store,
-            "Get information about the specified project."
+            "Get information about the specified project.",
         );
 
         parser.parse_args_or_exit();
@@ -112,11 +115,11 @@ fn main() {
 
         if confirm_input() {
             println!("Downloading to {}", &dl_path);
-                let filename = dl_version.files[0].filename.as_str();
-                let path = &(dl_path + "/" + filename);
-                let _ = client
-                    .download_file(path, dl_version.files[0].url.as_str())
-                    .unwrap();
+            let filename = dl_version.files[0].filename.as_str();
+            let path = &(dl_path + "/" + filename);
+            let _ = client
+                .download_file(path, dl_version.files[0].url.as_str())
+                .unwrap();
         } else {
             println!("Aborting")
         }
@@ -127,20 +130,18 @@ fn main() {
     }
 }
 
-
-
 fn confirm_input() -> bool {
     println!("proceed? [Y,n]");
     let stdin = io::stdin();
     let buf = &mut String::new();
     let _ = stdin.read_line(buf);
-    let chars:Vec<char> = buf.chars().collect();
+    let chars: Vec<char> = buf.chars().collect();
 
-    let request:char = match chars.first() {
-        Some(c) => {*c},
-        None => {'y'},
+    let request: char = match chars.first() {
+        Some(c) => *c,
+        None => 'y',
     };
-        
+
     match request {
         'y' | 'Y' | '\n' => true,
         'n' | 'N' => false,

@@ -2,7 +2,10 @@ use colored::Colorize;
 use reqwest::{blocking::Client, Url};
 use serde_json::Value;
 
-use super::{constants::{API_URL, MEMBERS, PROJECT, QUERY, SEARCH, VERSION}, defines::{Member, Project, SearchResp, Version, LOADER, VT}};
+use super::{
+    constants::{API_URL, MEMBERS, PROJECT, QUERY, SEARCH, VERSION},
+    defines::{Member, Project, SearchResp, Version, LOADER, VT},
+};
 
 pub fn search_package(client: &Client, query: String, staging: usize) {
     let query = Url::parse_with_params(
@@ -50,7 +53,12 @@ pub fn get_dl_url(
     loader: &LOADER,
     staging: usize,
 ) -> Result<Version, String> {
-    let versions: Vec<Version> = serde_json::from_value(request_api(client, staging, &(PROJECT.to_owned() + "/" + &dl_id + VERSION))).expect("from_value");
+    let versions: Vec<Version> = serde_json::from_value(request_api(
+        client,
+        staging,
+        &(PROJECT.to_owned() + "/" + &dl_id + VERSION),
+    ))
+    .expect("from_value");
     let mut dl_version: Option<Version> = None;
     if mc_ver.is_empty() {
         let mut latest_version: Option<Version> = None;
@@ -59,24 +67,24 @@ pub fn get_dl_url(
                 latest_version = Some(version.clone());
                 break;
             }
-        };
+        }
         if latest_version.is_none() {
             return Err("Loader not available".to_string());
         }
         dl_version = latest_version;
     } else {
-            for version in versions {
-                if version
-                    .game_versions
-                    .iter()
-                    .any(|e| e.to_string() == mc_ver)
-                    && version.version_type == vt
-                    && version.loaders.iter().any(|e| *e == *loader)
-                {
-                    dl_version = Some(version.clone());
-                    break;
-                }
+        for version in versions {
+            if version
+                .game_versions
+                .iter()
+                .any(|e| e.to_string() == mc_ver)
+                && version.version_type == vt
+                && version.loaders.iter().any(|e| *e == *loader)
+            {
+                dl_version = Some(version.clone());
+                break;
             }
+        }
     }
     if dl_version.is_none() {
         return Err("Did not find Project".to_string());
@@ -85,24 +93,21 @@ pub fn get_dl_url(
 }
 
 pub fn print_project_info(client: &Client, staging: usize, project_slug: String) {
-    let project: Project = 
-        serde_json::from_value(
-            request_api(
-                client,
-                staging,
-                &(PROJECT.to_string() + "/" + &project_slug)
-            )
-        ).expect("from_value");
-    let members: Vec<Member> = 
-        serde_json::from_value(
-            request_api(
-                client,
-                staging,
-                &(PROJECT.to_string() + "/" + &project_slug + MEMBERS)
-            )
-        ).expect("from_value");
+    let project: Project = serde_json::from_value(request_api(
+        client,
+        staging,
+        &(PROJECT.to_string() + "/" + &project_slug),
+    ))
+    .expect("from_value");
+    let members: Vec<Member> = serde_json::from_value(request_api(
+        client,
+        staging,
+        &(PROJECT.to_string() + "/" + &project_slug + MEMBERS),
+    ))
+    .expect("from_value");
     println!(
-        "Project: {}, latest-{}, {}\n {}\n\n Released: {}\n Last Updated: {} \n loaders: {}\n supported versions: \n{} license: {}\n source: {}\n members:\n{}",
+        "Project: {}, latest-{}, {}\n {}\n\n Released: {}\n Last Updated: {} \n \
+        loaders: {}\n supported versions: \n{} license: {}\n source: {}\n members:\n{}",
         project.title,
         project.game_versions.last().expect("last"),
         project.project_type.green(),
@@ -119,7 +124,9 @@ pub fn print_project_info(client: &Client, staging: usize, project_slug: String)
             Some(v) => {v.bright_blue()},
             None => {"none".to_string().red()},
         },
-        members.iter().map(|mem| "  ".to_string() + &mem.user.username.clone() + ", " + &mem.role + "\n").collect::<String>(),
+        members
+            .iter()
+            .map(|mem| "  ".to_string() + &mem.user.username.clone() + ", " + &mem.role + "\n")
+            .collect::<String>(),
     );
 }
-

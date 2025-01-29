@@ -23,13 +23,16 @@ impl VT {
 impl<'de> Deserialize<'de> for VT {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
-            match String::deserialize(deserializer)?.as_str() {
-                "release" | "RELEASE" => Ok(VT::RELEASE),
-                "beta" | "BETA" => Ok(VT::BETA),
-                "alpha" | "ALPHA" => Ok(VT::ALPHA),
-                _ => Err(serde::de::Error::custom("Expected either fabric, quilt or neoforge"))
-            }
+        D: serde::Deserializer<'de>,
+    {
+        match String::deserialize(deserializer)?.as_str() {
+            "release" | "RELEASE" => Ok(VT::RELEASE),
+            "beta" | "BETA" => Ok(VT::BETA),
+            "alpha" | "ALPHA" => Ok(VT::ALPHA),
+            _ => Err(serde::de::Error::custom(
+                "Expected either fabric, quilt or neoforge",
+            )),
+        }
     }
 }
 
@@ -50,20 +53,23 @@ pub enum LOADER {
     FABRIC,
     QUILT,
     NEOFORGE,
-    FORGE
+    FORGE,
 }
 
 impl<'de> Deserialize<'de> for LOADER {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
-            match String::deserialize(deserializer)?.as_str() {
-                "fabric" | "FABRIC" => Ok(LOADER::FABRIC),
-                "quilt" | "QUILT" => Ok(LOADER::QUILT),
-                "neoforge" | "NEOFORGE" => Ok(LOADER::NEOFORGE),
-                "forge" => Ok(LOADER::FORGE),
-                _ => Err(serde::de::Error::custom("Expected either fabric, quilt or neoforge"))
-            }
+        D: serde::Deserializer<'de>,
+    {
+        match String::deserialize(deserializer)?.as_str() {
+            "fabric" | "FABRIC" => Ok(LOADER::FABRIC),
+            "quilt" | "QUILT" => Ok(LOADER::QUILT),
+            "neoforge" | "NEOFORGE" => Ok(LOADER::NEOFORGE),
+            "forge" => Ok(LOADER::FORGE),
+            _ => Err(serde::de::Error::custom(
+                "Expected either fabric, quilt or neoforge",
+            )),
+        }
     }
 }
 
@@ -73,7 +79,7 @@ impl LOADER {
             Self::FABRIC => "fabric".to_string(),
             Self::QUILT => "quilt".to_string(),
             Self::NEOFORGE => "neoforge".to_string(),
-            Self::FORGE => "forge".to_string().bright_black().to_string()
+            Self::FORGE => "forge".to_string().bright_black().to_string(),
         }
     }
 }
@@ -86,7 +92,7 @@ impl FromStr for LOADER {
             "neoforge" | "NEOFORGE" => Ok(Self::NEOFORGE),
             "quilt" | "QUILT" => Ok(Self::QUILT),
             "forge" | "FORGE" => Err("This tool does not support Forge".to_string()),
-            _ => Err("Unknown Modloader".to_string())
+            _ => Err("Unknown Modloader".to_string()),
         }
     }
 }
@@ -126,7 +132,6 @@ pub struct Dependency {
     dependency_type: String,
 }
 
-
 //A modrinth Project, this can be a mod, modpack, resourcepack or shader
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Project {
@@ -162,5 +167,5 @@ pub struct Member {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub username: String
+    pub username: String,
 }

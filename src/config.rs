@@ -33,7 +33,12 @@ pub fn configure() -> Result<(VT, String, String, LOADER), String> {
 
     config = toml::from_str(body.as_str()).expect("toml::from_str");
 
-    Ok((config.release_type, config.download_path, config.pack_path, config.loader))
+    Ok((
+        config.release_type,
+        config.download_path,
+        config.pack_path,
+        config.loader,
+    ))
 }
 
 fn create_config() -> Result<File, std::io::Error> {
