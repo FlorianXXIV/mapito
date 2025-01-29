@@ -1,36 +1,15 @@
 mod client;
 mod config;
+mod mrapi;
 
-use core::panic;
-use std::{char, io, u64};
+use std::io;
 
 use crate::client::Downloader;
-use colored::Colorize;
 
 use argparse::{ArgumentParser, Store, StoreConst};
-use config::{configure, VT, LOADER};
-use reqwest::{blocking::Client, Url};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-const API_URL: [&str; 2] = [
-    "https://staging-api.modrinth.com/v2",
-    "https://api.modrinth.com/v2",
-];
-//API ENDPOINTS
-const SEARCH: &str = "/search";
-const PROJECT: &str = "/project";
-const VERSION: &str = "/version";
-//API PARAMS
-const QUERY: &str = "query";
-
-#[derive(Debug, Serialize, Deserialize)]
-struct SearchResp {
-    hits: Vec<Value>,
-    offset: i32,
-    limit: i32,
-    total_hits: i32,
-}
+use config::configure;
+use mrapi::{defines::Version, interactions::{get_dl_url, search_package}};
+use reqwest::blocking::Client;
 
 fn main() {
     //variables set by arguments
@@ -110,26 +89,26 @@ fn main() {
     }
 
     if !dl_id.is_empty() {
-        let dl_version: Value =
+        let dl_version: Version =
             get_dl_url(dl_id, &client, mc_ver, vt, &loader, staging).expect("get_dl_url");
-        let mut dl_size = (dl_version["files"][0]["size"].as_f64().unwrap() / 1048576 as f64).to_string();
+        let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
-            "Downloading: {}, {}\ntype: {}, downloads: {}, loader: {}\nsize: {} MiB",
-            dl_version["name"].to_string().replace("\"", ""),
-            dl_version["version_number"].to_string().replace("\"", ""),
-            dl_version["version_type"].to_string().replace("\"", ""),
-            dl_version["downloads"].to_string().replace("\"", ""),
-            dl_version["loaders"].to_string().replace("\"", ""),
+            "Downloading: {}, {}\ntype: {}, downloads: {}, loader: {:?}\nsize: {} MiB",
+            dl_version.name,
+            dl_version.version_number,
+            dl_version.version_type.to_string(),
+            dl_version.downloads,
+            dl_version.loaders,
             dl_size
         );
 
         if confirm_input() {
             println!("Downloading to {}", &dl_path);
-                let filename = dl_version["files"][0]["filename"].as_str().unwrap();
+                let filename = dl_version.files[0].filename.as_str();
                 let path = &(dl_path + "/" + filename);
                 let _ = client
-                    .download_file(path, dl_version["files"][0]["url"].as_str().unwrap())
+                    .download_file(path, dl_version.files[0].url.as_str())
                     .unwrap();
         } else {
             println!("Aborting")
@@ -137,86 +116,7 @@ fn main() {
     }
 }
 
-fn search_package(client: &Client, query: String, staging: usize) {
-    let query = Url::parse_with_params(
-        (API_URL[staging].to_owned() + SEARCH).as_str(),
-        &[(QUERY, query)],
-    )
-    .unwrap();
-    let query_response = client
-        .get(query)
-        .send()
-        .unwrap()
-        .json::<SearchResp>()
-        .unwrap();
 
-    for hit in query_response.hits {
-        let versions = hit["versions"].as_array().unwrap();
-        let latest = versions[versions.len() - 1].clone();
-        println!(
-            "{}|{},{}, MC-{}, by: {}, downloads: {}\n{}\n",
-            hit["slug"].to_string().replace("\"", "").green(),
-            hit["title"].to_string().replace("\"", ""),
-            hit["project_type"].to_string().replace("\"", ""),
-            latest.to_string().replace("\"", ""),
-            hit["author"].to_string().replace("\"", ""),
-            hit["downloads"].to_string().replace("\"", ""),
-            hit["description"]
-                .to_string()
-                .replace("\"", "")
-                .bright_black(),
-        );
-    }
-}
-
-fn get_dl_url(
-    dl_id: String,
-    client: &Client,
-    mc_ver: String,
-    vt: VT,
-    loader: &LOADER,
-    staging: usize,
-) -> Result<Value, String> {
-    let versions = request_api(client, staging, &(PROJECT.to_owned() + "/" + &dl_id + VERSION));
-    let mut dl_version: Value = Value::Null;
-    if mc_ver.is_empty() {
-        let mut latest_version = Value::Null;
-        for version in versions.as_array().unwrap().into_iter() {
-            if version["loaders"].as_array().unwrap().iter().any(|e| *e == *loader.to_string()) {
-                latest_version = version.clone();
-                break;
-            }
-        };
-        if latest_version.is_null() {
-            return Err("Loader not available".to_string());
-        }
-        dl_version = latest_version;
-    } else {
-            for version in versions.as_array().unwrap().into_iter() {
-                if version["game_versions"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|e| e.to_string() == mc_ver)
-                    && version["version_type"] == vt.to_string()
-                    && version["loaders"].as_array().unwrap().iter().any(|e| *e == *loader.to_string())
-                {
-                    dl_version = version.clone();
-                    break;
-                }
-            }
-    }
-    if dl_version.is_null() {
-        return Err("Did not find Project".to_string());
-    }
-    Ok(dl_version)
-}
-
-fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
-    let query = Url::parse(&(API_URL[staging].to_owned() + endpoint)).unwrap();
-
-    serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap()
-}
 
 fn confirm_input() -> bool {
     println!("proceed? [Y,n]");

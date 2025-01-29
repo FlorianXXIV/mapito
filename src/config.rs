@@ -3,68 +3,10 @@ use std::{
     env,
     fs::{create_dir_all, File},
     io::{ErrorKind, Read, Write},
-    str::FromStr,
 };
 use toml;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum VT {
-    RELEASE,
-    BETA,
-    ALPHA,
-}
-
-impl VT {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::RELEASE => String::from_str("release").expect("from_str"),
-            Self::BETA => String::from_str("beta").expect("from_str"),
-            Self::ALPHA => String::from_str("alpha").expect("from_str"),
-        }
-    }
-}
-
-impl FromStr for VT {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "release" | "RELEASE" => Ok(Self::RELEASE),
-            "beta" | "BETA" => Ok(Self::BETA),
-            "alpha" | "ALPHA" => Ok(Self::ALPHA),
-            _ => Err("invalid version type".to_string()),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub enum LOADER {
-    FABRIC,
-    QUILT,
-    NEOFORGE
-}
-
-impl LOADER {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::FABRIC => "fabric".to_string(),
-            Self::QUILT => "quilt".to_string(),
-            Self::NEOFORGE => "neoforge".to_string()
-        }
-    }
-}
-
-impl FromStr for LOADER {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "fabric" | "FABRIC" => Ok(Self::FABRIC),
-            "neoforge" | "NEOFORGE" => Ok(Self::NEOFORGE),
-            "quilt" | "QUILT" => Ok(Self::QUILT),
-            "forge" | "FORGE" => Err("This tool does not support Forge".to_string()),
-            _ => Err("Unknown Modloader".to_string())
-        }
-    }
-}
+use crate::mrapi::defines::{LOADER, VT};
 
 #[derive(Serialize, Deserialize)]
 struct Configuration {
