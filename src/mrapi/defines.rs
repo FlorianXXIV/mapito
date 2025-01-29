@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -48,7 +49,8 @@ impl FromStr for VT {
 pub enum LOADER {
     FABRIC,
     QUILT,
-    NEOFORGE
+    NEOFORGE,
+    FORGE
 }
 
 impl<'de> Deserialize<'de> for LOADER {
@@ -59,6 +61,7 @@ impl<'de> Deserialize<'de> for LOADER {
                 "fabric" | "FABRIC" => Ok(LOADER::FABRIC),
                 "quilt" | "QUILT" => Ok(LOADER::QUILT),
                 "neoforge" | "NEOFORGE" => Ok(LOADER::NEOFORGE),
+                "forge" => Ok(LOADER::FORGE),
                 _ => Err(serde::de::Error::custom("Expected either fabric, quilt or neoforge"))
             }
     }
@@ -69,7 +72,8 @@ impl LOADER {
         match self {
             Self::FABRIC => "fabric".to_string(),
             Self::QUILT => "quilt".to_string(),
-            Self::NEOFORGE => "neoforge".to_string()
+            Self::NEOFORGE => "neoforge".to_string(),
+            Self::FORGE => "forge".to_string().bright_black().to_string()
         }
     }
 }
@@ -126,5 +130,37 @@ pub struct Dependency {
 //A modrinth Project, this can be a mod, modpack, resourcepack or shader
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Project {
-    
+    pub slug: String,
+    pub project_type: String,
+    pub team: String,
+    pub title: String,
+    pub description: String,
+    pub published: String,
+    pub updated: String,
+    pub license: License,
+    pub downloads: u32,
+    pub game_versions: Vec<String>,
+    pub categories: Vec<String>,
+    pub loaders: Vec<LOADER>,
+    pub source_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct License {
+    pub id: String,
+    pub name: String,
+    pub url: Option<String>,
+}
+
+//The Members of a Team
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Member {
+    pub role: String,
+    pub team_id: String,
+    pub user: User,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+    pub username: String
 }

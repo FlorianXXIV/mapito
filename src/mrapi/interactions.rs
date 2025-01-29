@@ -2,7 +2,7 @@ use colored::Colorize;
 use reqwest::{blocking::Client, Url};
 use serde_json::Value;
 
-use super::{constants::{API_URL, PROJECT, QUERY, SEARCH, VERSION}, defines::{SearchResp, Version, LOADER, VT}};
+use super::{constants::{API_URL, MEMBERS, PROJECT, QUERY, SEARCH, VERSION}, defines::{Member, Project, SearchResp, Version, LOADER, VT}};
 
 pub fn search_package(client: &Client, query: String, staging: usize) {
     let query = Url::parse_with_params(
@@ -36,7 +36,7 @@ pub fn search_package(client: &Client, query: String, staging: usize) {
     }
 }
 
-pub fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
+fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
     let query = Url::parse(&(API_URL[staging].to_owned() + endpoint)).unwrap();
 
     serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap()
@@ -82,5 +82,44 @@ pub fn get_dl_url(
         return Err("Did not find Project".to_string());
     }
     Ok(dl_version.expect("Unknown Error"))
+}
+
+pub fn print_project_info(client: &Client, staging: usize, project_slug: String) {
+    let project: Project = 
+        serde_json::from_value(
+            request_api(
+                client,
+                staging,
+                &(PROJECT.to_string() + "/" + &project_slug)
+            )
+        ).expect("from_value");
+    let members: Vec<Member> = 
+        serde_json::from_value(
+            request_api(
+                client,
+                staging,
+                &(PROJECT.to_string() + "/" + &project_slug + MEMBERS)
+            )
+        ).expect("from_value");
+    println!(
+        "Project: {}, latest-{}, {}\n {}\n\n Released: {}\n Last Updated: {} \n loaders: {}\n supported versions: \n{} license: {}\n source: {}\n members:\n{}",
+        project.title,
+        project.game_versions.last().expect("last"),
+        project.project_type.green(),
+        project.description,
+        project.published.yellow(),
+        project.updated.yellow(),
+        project.loaders.iter().map(|e| e.to_string() + ",").collect::<String>(),
+        project.game_versions
+            .iter().rev().take(10)
+            .map(|e| "  ".to_string()  + &e.to_string() + "\n")
+            .collect::<String>(),
+        project.license.name,
+        match project.source_url {
+            Some(v) => {v.bright_blue()},
+            None => {"none".to_string().red()},
+        },
+        members.iter().map(|mem| "  ".to_string() + &mem.user.username.clone() + ", " + &mem.role + "\n").collect::<String>(),
+    );
 }
 

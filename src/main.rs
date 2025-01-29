@@ -8,7 +8,7 @@ use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst};
 use config::configure;
-use mrapi::{defines::Version, interactions::{get_dl_url, search_package}};
+use mrapi::{defines::Version, interactions::{get_dl_url, print_project_info, search_package}};
 use reqwest::blocking::Client;
 
 fn main() {
@@ -18,6 +18,7 @@ fn main() {
     let mut search: String = String::new();
     let mut dl_id: String = String::new();
     let mut mc_ver: String = String::new();
+    let mut project_slug: String = String::new();
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
@@ -79,6 +80,12 @@ fn main() {
             "The modloader to be used with the mod"
         );
 
+        parser.refer(&mut project_slug).add_option(
+            &["-i", "--project-info"],
+            Store,
+            "Get information about the specified project."
+        );
+
         parser.parse_args_or_exit();
     }
 
@@ -113,6 +120,10 @@ fn main() {
         } else {
             println!("Aborting")
         }
+    }
+
+    if !project_slug.is_empty() {
+        print_project_info(&client, staging, project_slug);
     }
 }
 
