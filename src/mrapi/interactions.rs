@@ -2,9 +2,11 @@ use colored::Colorize;
 use reqwest::{blocking::Client, Url};
 use serde_json::Value;
 
+use crate::config::Configuration;
+
 use super::{
     constants::{API_URL, MEMBERS, PROJECT, QUERY, SEARCH, VERSION},
-    defines::{Member, Project, SearchResp, Version, LOADER, VT},
+    defines::{Member, Project, SearchResp, Version},
 };
 
 pub fn search_package(client: &Client, query: String, staging: usize) {
@@ -39,31 +41,35 @@ pub fn search_package(client: &Client, query: String, staging: usize) {
     }
 }
 
-fn request_api(client: &Client, staging: usize, endpoint: &String) -> Value {
+fn request_api(client: &Client, staging: usize, endpoint: &String) -> Result<Value, serde_json::Error> {
     let query = Url::parse(&(API_URL[staging].to_owned() + endpoint)).unwrap();
 
-    serde_json::from_str(&client.get(query).send().unwrap().text().unwrap()).unwrap()
+    Ok(serde_json::from_str(
+        &client
+            .get(query)
+            .send()
+            .expect("send")
+            .text()
+            .expect("text")
+        ))?
 }
 
 pub fn get_dl_url(
     dl_id: String,
     client: &Client,
-    mc_ver: String,
-    vt: VT,
-    loader: &LOADER,
-    staging: usize,
+    config: &Configuration,
 ) -> Result<Version, String> {
     let versions: Vec<Version> = serde_json::from_value(request_api(
         client,
-        staging,
+        config.staging,
         &(PROJECT.to_owned() + "/" + &dl_id + VERSION),
-    ))
-    .expect("from_value");
+    ).expect("request_api")
+    ).expect("from_value");
     let mut dl_version: Option<Version> = None;
-    if mc_ver.is_empty() {
+    if config.mc_ver == "latest" {
         let mut latest_version: Option<Version> = None;
         for version in versions {
-            if version.loaders.iter().any(|e| *e == *loader) {
+            if version.loaders.iter().any(|e| *e == config.loader) {
                 latest_version = Some(version.clone());
                 break;
             }
@@ -77,9 +83,9 @@ pub fn get_dl_url(
             if version
                 .game_versions
                 .iter()
-                .any(|e| e.to_string() == mc_ver)
-                && version.version_type == vt
-                && version.loaders.iter().any(|e| *e == *loader)
+                .any(|e| e.to_string() == config.mc_ver)
+                && version.version_type == config.release_type
+                && version.loaders.iter().any(|e| *e == config.loader)
             {
                 dl_version = Some(version.clone());
                 break;
@@ -97,13 +103,13 @@ pub fn print_project_info(client: &Client, staging: usize, project_slug: String)
         client,
         staging,
         &(PROJECT.to_string() + "/" + &project_slug),
-    ))
+    ).expect("request_api"))
     .expect("from_value");
     let members: Vec<Member> = serde_json::from_value(request_api(
         client,
         staging,
         &(PROJECT.to_string() + "/" + &project_slug + MEMBERS),
-    ))
+    ).expect("request_api"))
     .expect("from_value");
     println!(
         "Project: {}, latest-{}, {}\n {}\n\n Released: {}\n Last Updated: {} \n \
@@ -130,3 +136,4 @@ pub fn print_project_info(client: &Client, staging: usize, project_slug: String)
             .collect::<String>(),
     );
 }
+

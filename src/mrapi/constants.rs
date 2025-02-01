@@ -1,6 +1,6 @@
 pub const API_URL: [&str; 2] = [
-    "https://staging-api.modrinth.com/v2",
     "https://api.modrinth.com/v2",
+    "https://staging-api.modrinth.com/v2",
 ];
 //API ENDPOINTS
 pub const SEARCH: &str = "/search";

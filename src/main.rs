@@ -16,11 +16,9 @@ use reqwest::blocking::Client;
 
 fn main() {
     //variables set by arguments
-    let (mut vt, mut dl_path, mut pack_path, mut loader) = configure().expect("configure");
-    let mut staging = 1;
+    let mut config = configure().expect("configure");
     let mut search: String = String::new();
     let mut dl_id: String = String::new();
-    let mut mc_ver: String = String::new();
     let mut project_slug: String = String::new();
     //argument parser arg/opt setup
     {
@@ -28,11 +26,12 @@ fn main() {
 
         parser.set_description(
             "A commandline tool to interact with the modrinth \
-            database, it allows you to search for mods and download them in a \
+            database, it allows you to search for projects on modrinth \
+            and download them for a minecraft vesion of you choosing into a \
             folder specified by you.",
         );
 
-        parser.refer(&mut staging).add_option(
+        parser.refer(&mut config.staging).add_option(
             &["-S", "--staging"],
             StoreConst(0),
             "If set, use the \
@@ -46,7 +45,7 @@ fn main() {
             "Search the Modrinth database for a certain project/mod.",
         );
 
-        parser.refer(&mut dl_path).add_option(
+        parser.refer(&mut config.download_path).add_option(
             &["-p", "--path"],
             Store,
             "The path where you want to download any files to. Default: \
@@ -59,25 +58,25 @@ fn main() {
             "Download the mod given by it's ID/Slug.",
         );
 
-        parser.refer(&mut mc_ver).add_option(
+        parser.refer(&mut config.mc_ver).add_option(
             &["-v", "--mc-ver"],
             Store,
             "Set the Minecraft version that you want to download the Mod for.",
         );
 
-        parser.refer(&mut vt).add_option(
+        parser.refer(&mut config.release_type).add_option(
             &["--version-type"],
             Store,
             "Chose verion type, one of: release, beta, alpha",
         );
 
-        parser.refer(&mut pack_path).add_option(
+        parser.refer(&mut config.pack_path).add_option(
             &["--pack-path"],
             Store,
             "Path where pack files are stored",
         );
 
-        parser.refer(&mut loader).add_option(
+        parser.refer(&mut config.loader).add_option(
             &["-l", "--loader"],
             Store,
             "The modloader to be used with the mod",
@@ -95,12 +94,12 @@ fn main() {
     let client = Client::new();
 
     if !search.is_empty() {
-        search_package(&client, search, staging);
+        search_package(&client, search, config.staging);
     }
 
     if !dl_id.is_empty() {
         let dl_version: Version =
-            get_dl_url(dl_id, &client, mc_ver, vt, &loader, staging).expect("get_dl_url");
+            get_dl_url(dl_id, &client, &config).expect("get_dl_url");
         let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
@@ -114,9 +113,9 @@ fn main() {
         );
 
         if confirm_input() {
-            println!("Downloading to {}", &dl_path);
+            println!("Downloading to {}", &config.download_path);
             let filename = dl_version.files[0].filename.as_str();
-            let path = &(dl_path + "/" + filename);
+            let path = &(config.download_path + "/" + filename);
             let _ = client
                 .download_file(path, dl_version.files[0].url.as_str())
                 .unwrap();
@@ -126,7 +125,7 @@ fn main() {
     }
 
     if !project_slug.is_empty() {
-        print_project_info(&client, staging, project_slug);
+        print_project_info(&client, config.staging, project_slug);
     }
 }
 

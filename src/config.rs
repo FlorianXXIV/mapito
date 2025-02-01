@@ -8,15 +8,17 @@ use toml;
 
 use crate::mrapi::defines::{LOADER, VT};
 
-#[derive(Serialize, Deserialize)]
-struct Configuration {
-    release_type: VT,
-    loader: LOADER,
-    download_path: String,
-    pack_path: String,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Configuration {
+    pub release_type: VT,
+    pub loader: LOADER,
+    pub download_path: String,
+    pub pack_path: String,
+    pub mc_ver: String,
+    pub staging: usize,
 }
 
-pub fn configure() -> Result<(VT, String, String, LOADER), String> {
+pub fn configure() -> Result<Configuration, String> {
     let config: Configuration;
 
     let config_path = env::var("HOME").unwrap() + "/.config/modrinth-apitool";
@@ -33,12 +35,7 @@ pub fn configure() -> Result<(VT, String, String, LOADER), String> {
 
     config = toml::from_str(body.as_str()).expect("toml::from_str");
 
-    Ok((
-        config.release_type,
-        config.download_path,
-        config.pack_path,
-        config.loader,
-    ))
+    Ok(config)
 }
 
 fn create_config() -> Result<File, std::io::Error> {
@@ -50,6 +47,8 @@ fn create_config() -> Result<File, std::io::Error> {
         download_path: env::var("HOME").unwrap() + "/Downloads",
         pack_path: env::var("HOME").unwrap() + "/.config/modrinth-apitool/packs",
         loader: LOADER::FABRIC,
+        mc_ver: "latest".to_string(),
+        staging: 0,
     };
     write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
 
