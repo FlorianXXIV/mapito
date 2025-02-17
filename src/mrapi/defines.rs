@@ -79,7 +79,7 @@ impl LOADER {
             Self::FABRIC => "fabric".to_string(),
             Self::QUILT => "quilt".to_string(),
             Self::NEOFORGE => "neoforge".to_string(),
-            Self::FORGE => "forge".to_string().bright_black().to_string(),
+            Self::FORGE => "forge".to_string(),
         }
     }
 }
@@ -91,7 +91,7 @@ impl FromStr for LOADER {
             "fabric" | "FABRIC" => Ok(Self::FABRIC),
             "neoforge" | "NEOFORGE" => Ok(Self::NEOFORGE),
             "quilt" | "QUILT" => Ok(Self::QUILT),
-            "forge" | "FORGE" => Err("This tool does not support Forge".to_string()),
+            "forge" | "FORGE" => Ok(Self::FORGE),
             _ => Err("Unknown Modloader".to_string()),
         }
     }
