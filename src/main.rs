@@ -16,7 +16,7 @@ use mrapi::{
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct MVDescriptor {
     mc_ver: String,
     version_types: Vec<VT>,

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum VT {
@@ -121,14 +121,15 @@ pub struct Version {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiFile {
     pub url: String,
+    pub hashes: Map<String, Value>,
     pub filename: String,
     pub size: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Dependency {
-    project_id: String,
-    dependency_type: String,
+    pub project_id: String,
+    pub dependency_type: String,
 }
 
 //A modrinth Project, this can be a mod, modpack, resourcepack or shader
