@@ -3,16 +3,18 @@ mod config;
 mod mrapi;
 mod pack;
 
-use std::io;
+use std::{io::{self, stdin}, str::FromStr};
 
 use crate::client::Downloader;
 
-use argparse::{ArgumentParser, Store, StoreConst};
+use argparse::{ArgumentParser, Store, StoreConst, StoreTrue};
+use colored::Colorize;
 use config::configure;
 use mrapi::{
     defines::{Version, LOADER, VT},
     interactions::{get_project_version, print_project_info, search_package},
 };
+use pack::create_pack;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +31,7 @@ fn main() {
     let mut search: String = String::new();
     let mut dl_id: String = String::new();
     let mut project_slug: String = String::new();
+    let mut make_pack: bool = false;
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
@@ -97,6 +100,12 @@ fn main() {
             "Get information about the specified project.",
         );
 
+        parser.refer(&mut make_pack).add_option(
+            &["--make-pack"],
+            StoreTrue,
+            "interactively make a new pack",
+        );
+
         parser.parse_args_or_exit();
     }
 
@@ -104,6 +113,7 @@ fn main() {
 
     if !search.is_empty() {
         search_package(&client, search, config.staging);
+        return;
     }
 
     if !dl_id.is_empty() {
@@ -136,10 +146,75 @@ fn main() {
         } else {
             println!("Aborting")
         }
+        return;
     }
 
     if !project_slug.is_empty() {
         print_project_info(&client, config.staging, project_slug);
+        return;
+    }
+
+    if make_pack {
+        let mut buf = &mut String::new();
+        let mut version_desc = MVDescriptor {
+            mc_ver: "".to_string(),
+            version_types: vec![VT::RELEASE],
+            loader: LOADER::FABRIC,
+        };
+        println!("Please enter the Name of the new Pack:");
+        stdin().read_line(buf).expect("read_line");
+        let name = buf.to_string();
+        buf.clear();
+        println!("Please enter the Minecraft version you want the pack to have:");
+        stdin().read_line(buf).expect("read_line");
+        version_desc.mc_ver = buf.to_string();
+        buf.clear();
+        println!("Please select what loader you want to use:
+            \n[0] - Fabric
+            \n[1] - Quilt
+            \n[2] - NeoForge
+            \n[3] - Forge");
+        stdin().read_line(buf).expect("read_line");
+        match buf.to_string().replace("\n", "").as_str() {
+            "0" | "[0]" => version_desc.loader = LOADER::FABRIC,
+            "1" | "[1]" => version_desc.loader = LOADER::QUILT,
+            "2" | "[2]" => version_desc.loader = LOADER::NEOFORGE,
+            "3" | "[3]" => version_desc.loader = LOADER::FORGE,
+            _ => panic!("invalid input")
+        }
+        buf.clear();
+        println!("Please type in a list of version types you want to allow:
+            \nExample: 'release beta'
+            \nAllowed types: 'release' 'beta' 'alpha'");
+        stdin().read_line(buf).expect("read_line");
+        version_desc.version_types = buf
+            .split_whitespace()
+            .map(|vt| VT::from_str(vt).expect("from_str"))
+            .collect();
+        buf.clear();
+        println!("Now you can search for mods and add them to the pack, you can finish by entering 'q'");
+        let mut mods: Vec<String> = Vec::new();
+        loop {
+            stdin().read_line(buf).expect("read_line");
+            let query = buf.to_string().replace("\n", "");
+            buf.clear();
+            if query == "q" {
+                break;
+            } else {
+                let slugs = search_package(&client, buf.to_string(), config.staging);
+                match slugs {
+                    Some(sl) => {
+                        println!("Select mod from 0 to {}", sl.len()-1);
+                        stdin().read_line(buf).expect("read_line");
+                        let i:usize = buf.to_string().parse().expect("try_into");
+                        mods.push(sl[i].clone());
+                    },
+                    None => {},
+                }
+            }
+            buf.clear();
+        }
+        create_pack(&client, config.staging, name, version_desc, &mut mods, &config);
     }
 }
 

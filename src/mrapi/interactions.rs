@@ -9,24 +9,31 @@ use super::{
     defines::{Member, Project, SearchResp, Version},
 };
 
-pub fn search_package(client: &Client, query: String, staging: usize) {
+pub fn search_package(client: &Client, query: String, staging: usize) -> Option<Vec<String>>{
     let query = Url::parse_with_params(
         (API_URL[staging].to_owned() + SEARCH).as_str(),
         &[(QUERY, query)],
     )
     .unwrap();
-    let query_response = client
-        .get(query)
-        .send()
-        .unwrap()
-        .json::<SearchResp>()
-        .unwrap();
+    let query_response = match client
+            .get(query)
+            .send()
+            .unwrap()
+            .json::<SearchResp>() {
+        Ok(v) => { v },
+        Err(_) => {
+            println!("Query failed.");
+            return None 
+        },
+    };
 
+    let mut slugs: Vec<String> = Vec::new();
+    let mut counter = 0;
     for hit in query_response.hits {
         let versions = hit["versions"].as_array().unwrap();
         let latest = versions[versions.len() - 1].clone();
         println!(
-            "{}|{},{}, MC-{}, by: {}, downloads: {}\n{}\n",
+            "{counter} {}|{},{}, MC-{}, by: {}, downloads: {}\n{}\n",
             hit["slug"].to_string().replace("\"", "").green(),
             hit["title"].to_string().replace("\"", ""),
             hit["project_type"].to_string().replace("\"", ""),
@@ -38,7 +45,11 @@ pub fn search_package(client: &Client, query: String, staging: usize) {
                 .replace("\"", "")
                 .bright_black(),
         );
+        counter += 1;
+        slugs.push(hit["slug"].to_string().replace("\"", ""));
     }
+
+    Some(slugs)
 }
 
 fn request_api(client: &Client, staging: usize, endpoint: &String) -> Result<Value, serde_json::Error> {
