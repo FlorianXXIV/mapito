@@ -33,7 +33,7 @@ pub fn configure() -> Result<Configuration, String> {
     let mut body = String::new();
     config_fd.read_to_string(&mut body).expect("read_to_string");
 
-    config = parse_config(body);
+    config = parse_config(body)?;
     
     let mut config_fd = File::create(config_path +  "/config.toml").expect("open");
 
@@ -51,9 +51,12 @@ fn create_config() -> Result<File, std::io::Error> {
     return Ok(config);
 }
 
-fn parse_config(body: String) -> Configuration {
+fn parse_config(body: String) -> Result<Configuration, String> {
     let mut config = get_default_cfg();
-    let cfg_table = body.parse::<Table>().unwrap();
+    let cfg_table = match body.parse::<Table>() {
+        Ok(v) => { v },
+        Err(e) => {return Err(e.message().to_string())},
+    };
 
     for (key,value) in cfg_table {
         match key.as_str() {
@@ -67,7 +70,7 @@ fn parse_config(body: String) -> Configuration {
         }
     }
 
-    config
+    Ok(config)
 }
 
 fn get_default_cfg() -> Configuration{
