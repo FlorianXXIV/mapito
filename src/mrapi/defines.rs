@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

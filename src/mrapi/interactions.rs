@@ -2,7 +2,7 @@ use colored::Colorize;
 use reqwest::{blocking::Client, Url};
 use serde_json::Value;
 
-use crate::config::Configuration;
+use crate::MVDescriptor;
 
 use super::{
     constants::{API_URL, MEMBERS, PROJECT, QUERY, SEARCH, VERSION},
@@ -54,50 +54,6 @@ fn request_api(client: &Client, staging: usize, endpoint: &String) -> Result<Val
         ))?
 }
 
-pub fn get_dl_url(
-    dl_id: String,
-    client: &Client,
-    config: &Configuration,
-) -> Result<Version, String> {
-    let versions: Vec<Version> = serde_json::from_value(request_api(
-        client,
-        config.staging,
-        &(PROJECT.to_owned() + "/" + &dl_id + VERSION),
-    ).expect("request_api")
-    ).expect("from_value");
-    let mut dl_version: Option<Version> = None;
-    if config.mc_ver == "latest" {
-        let mut latest_version: Option<Version> = None;
-        for version in versions {
-            if version.loaders.iter().any(|e| *e == config.loader) {
-                latest_version = Some(version.clone());
-                break;
-            }
-        }
-        if latest_version.is_none() {
-            return Err("Loader not available".to_string());
-        }
-        dl_version = latest_version;
-    } else {
-        for version in versions {
-            if version
-                .game_versions
-                .iter()
-                .any(|e| e.to_string() == config.mc_ver)
-                && version.version_type == config.release_type
-                && version.loaders.iter().any(|e| *e == config.loader)
-            {
-                dl_version = Some(version.clone());
-                break;
-            }
-        }
-    }
-    if dl_version.is_none() {
-        return Err("Did not find Project".to_string());
-    }
-    Ok(dl_version.expect("Unknown Error"))
-}
-
 pub fn print_project_info(client: &Client, staging: usize, project_slug: String) {
     let project: Project = serde_json::from_value(request_api(
         client,
@@ -135,5 +91,38 @@ pub fn print_project_info(client: &Client, staging: usize, project_slug: String)
             .map(|mem| "  ".to_string() + &mem.user.username.clone() + ", " + &mem.role + "\n")
             .collect::<String>(),
     );
+}
+
+pub fn get_project_version(
+    client: &Client,
+    staging: usize,
+    project_slug: String,
+    version_desc: MVDescriptor
+    ) -> Result<Version, String>{
+    let mut project_version: Option<Version> = None;
+    let versions: Vec<Version> = serde_json::from_value(
+            request_api(
+                client,
+                staging,
+                &(PROJECT.to_owned() + "/" + &project_slug + VERSION)
+                ).expect("request_api")
+        ).expect("from_value");
+    for version in versions {
+        if (
+            version.game_versions.contains(&version_desc.mc_ver) 
+            || version_desc.mc_ver == "latest"
+            )
+            && version_desc.version_types.contains(&version.version_type)
+            && version.loaders.contains(&version_desc.loader){
+            project_version = Some(version.clone());
+            break;
+        }
+    }
+
+    if project_version.is_none() {
+        return Err("Specified Mod Version not found".to_string());
+    }
+
+    Ok(project_version.expect("Unknown Error"))
 }
 

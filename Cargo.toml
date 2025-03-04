@@ -1,6 +1,6 @@
 [package]
 name = "modrinth-apitool"
-version = "0.2.4"
+version = "0.3.0"
 edition = "2021"
 authors = ["FlorianXXIV"]
 description = "A command line interface for interacting with the modrinth api to manage you minecraft mods more easily."

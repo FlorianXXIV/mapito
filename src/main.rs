@@ -1,6 +1,7 @@
 mod client;
 mod config;
 mod mrapi;
+mod pack;
 
 use std::io;
 
@@ -9,10 +10,18 @@ use crate::client::Downloader;
 use argparse::{ArgumentParser, Store, StoreConst};
 use config::configure;
 use mrapi::{
-    defines::Version,
-    interactions::{get_dl_url, print_project_info, search_package},
+    defines::{Version, LOADER, VT},
+    interactions::{get_project_version, print_project_info, search_package},
 };
 use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct MVDescriptor {
+    mc_ver: String,
+    version_types: Vec<VT>,
+    loader: LOADER,
+}
 
 fn main() {
     //variables set by arguments
@@ -98,8 +107,13 @@ fn main() {
     }
 
     if !dl_id.is_empty() {
+        let version_desc = MVDescriptor {
+            mc_ver: config.mc_ver.clone(),
+            version_types: vec![config.release_type.clone()],
+            loader: config.loader.clone(),
+        };
         let dl_version: Version =
-            get_dl_url(dl_id, &client, &config).expect("get_dl_url");
+            get_project_version(&client, config.staging, dl_id, version_desc).expect("get_project_version");
         let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
