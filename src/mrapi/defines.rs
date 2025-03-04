@@ -30,7 +30,7 @@ impl<'de> Deserialize<'de> for VT {
             "beta" | "BETA" => Ok(VT::BETA),
             "alpha" | "ALPHA" => Ok(VT::ALPHA),
             _ => Err(serde::de::Error::custom(
-                "Expected either fabric, quilt or neoforge",
+                "Invalid version Type",
             )),
         }
     }
