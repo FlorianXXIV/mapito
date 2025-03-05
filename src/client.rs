@@ -9,7 +9,7 @@ pub trait Downloader {
 impl Downloader for Client {
     fn download_file(&self, path: &str, url: &str, hash: &str) -> Result<()> {
         let body = self.get(url).send().unwrap().bytes().unwrap();
-        
+
         println!("Checking data integrity.");
 
         let dl_hash = Sha512::digest(&body);

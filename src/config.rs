@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     env,
     fs::{create_dir_all, File},
-    io::{ErrorKind, Read, Write}, str::FromStr,
+    io::{ErrorKind, Read, Write},
+    str::FromStr,
 };
 use toml::{self, Table};
 
@@ -34,8 +35,8 @@ pub fn configure() -> Result<Configuration, String> {
     config_fd.read_to_string(&mut body).expect("read_to_string");
 
     config = parse_config(body)?;
-    
-    let mut config_fd = File::create(config_path +  "/config.toml").expect("open");
+
+    let mut config_fd = File::create(config_path + "/config.toml").expect("open");
 
     write!(&mut config_fd, "{}", toml::to_string(&config).unwrap()).expect("write config");
     Ok(config)
@@ -54,11 +55,11 @@ fn create_config() -> Result<File, std::io::Error> {
 fn parse_config(body: String) -> Result<Configuration, String> {
     let mut config = get_default_cfg();
     let cfg_table = match body.parse::<Table>() {
-        Ok(v) => { v },
-        Err(e) => {return Err(e.message().to_string())},
+        Ok(v) => v,
+        Err(e) => return Err(e.message().to_string()),
     };
 
-    for (key,value) in cfg_table {
+    for (key, value) in cfg_table {
         match key.as_str() {
             "release_type" => config.release_type = VT::from_str(value.as_str().unwrap()).unwrap(),
             "loader" => config.loader = LOADER::from_str(value.as_str().unwrap()).unwrap(),
@@ -66,14 +67,14 @@ fn parse_config(body: String) -> Result<Configuration, String> {
             "pack_path" => config.pack_path = value.try_into().unwrap(),
             "mc_ver" => config.mc_ver = value.try_into().unwrap(),
             "staging" => config.staging = value.try_into().unwrap(),
-            &_ => println!("Warning: unused key '{key}' in config file.")
+            &_ => println!("Warning: unused key '{key}' in config file."),
         }
     }
 
     Ok(config)
 }
 
-fn get_default_cfg() -> Configuration{
+fn get_default_cfg() -> Configuration {
     Configuration {
         release_type: VT::RELEASE,
         download_path: env::var("HOME").unwrap() + "/Downloads",

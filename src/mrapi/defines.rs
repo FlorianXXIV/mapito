@@ -28,9 +28,7 @@ impl<'de> Deserialize<'de> for VT {
             "release" | "RELEASE" => Ok(VT::RELEASE),
             "beta" | "BETA" => Ok(VT::BETA),
             "alpha" | "ALPHA" => Ok(VT::ALPHA),
-            _ => Err(serde::de::Error::custom(
-                "Invalid version Type",
-            )),
+            _ => Err(serde::de::Error::custom("Invalid version Type")),
         }
     }
 }

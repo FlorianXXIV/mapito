@@ -3,7 +3,10 @@ mod config;
 mod mrapi;
 mod pack;
 
-use std::{io::{self, stdin}, str::FromStr};
+use std::{
+    io::{self, stdin},
+    str::FromStr,
+};
 
 use crate::client::Downloader;
 
@@ -122,8 +125,8 @@ fn main() {
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };
-        let dl_version: Version =
-            get_project_version(&client, config.staging, dl_id, version_desc).expect("get_project_version");
+        let dl_version: Version = get_project_version(&client, config.staging, dl_id, version_desc)
+            .expect("get_project_version");
         let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
@@ -141,7 +144,14 @@ fn main() {
             let filename = dl_version.files[0].filename.as_str();
             let path = &(config.download_path + "/" + filename);
             let _ = client
-                .download_file(path, dl_version.files[0].url.as_str(), dl_version.files[0].hashes["sha512"].to_string().replace("\"", "").as_str())
+                .download_file(
+                    path,
+                    dl_version.files[0].url.as_str(),
+                    dl_version.files[0].hashes["sha512"]
+                        .to_string()
+                        .replace("\"", "")
+                        .as_str(),
+                )
                 .unwrap();
         } else {
             println!("Aborting")
@@ -164,21 +174,25 @@ fn main() {
         let name = read_line_to_string();
         println!("Please enter the Minecraft version you want the pack to have:");
         version_desc.mc_ver = read_line_to_string();
-        println!("Please select what loader you want to use:
+        println!(
+            "Please select what loader you want to use:
             \n[0] - Fabric
             \n[1] - Quilt
             \n[2] - NeoForge
-            \n[3] - Forge");
+            \n[3] - Forge"
+        );
         match read_line_to_string().as_str() {
             "0" | "[0]" => version_desc.loader = LOADER::FABRIC,
             "1" | "[1]" => version_desc.loader = LOADER::QUILT,
             "2" | "[2]" => version_desc.loader = LOADER::NEOFORGE,
             "3" | "[3]" => version_desc.loader = LOADER::FORGE,
-            _ => panic!("invalid input")
+            _ => panic!("invalid input"),
         }
-        println!("Please type in a list of version types you want to allow:
+        println!(
+            "Please type in a list of version types you want to allow:
             \nExample: 'release beta'
-            \nAllowed types: 'release' 'beta' 'alpha'");
+            \nAllowed types: 'release' 'beta' 'alpha'"
+        );
         version_desc.version_types = read_line_to_string()
             .split_whitespace()
             .map(|vt| VT::from_str(vt).expect("from_str"))
@@ -191,7 +205,9 @@ fn main() {
             println!("Aborting pack Creation");
             return;
         }
-        println!("Now you can search for mods and add them to the pack, you can finish by entering 'q'");
+        println!(
+            "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
+        );
         let mut mods: Vec<String> = Vec::new();
         loop {
             let query = read_line_to_string();
@@ -201,15 +217,22 @@ fn main() {
                 let slugs = search_package(&client, query, config.staging);
                 match slugs {
                     Some(sl) => {
-                        println!("Select mod from 0 to {}", sl.len()-1);
-                        let i:usize = read_line_to_string().parse().expect("parse");
+                        println!("Select mod from 0 to {}", sl.len() - 1);
+                        let i: usize = read_line_to_string().parse().expect("parse");
                         mods.push(sl[i].clone());
-                    },
-                    None => {},
+                    }
+                    None => {}
                 }
             }
         }
-        create_pack(&client, config.staging, name, version_desc, &mut mods, &config);
+        create_pack(
+            &client,
+            config.staging,
+            name,
+            version_desc,
+            &mut mods,
+            &config,
+        );
     }
 }
 
