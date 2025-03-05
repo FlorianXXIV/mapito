@@ -63,7 +63,7 @@ pub fn create_pack(
             name: project_version.name,
             verstion_type: project_version.version_type,
             file_url: project_version.files[0].url.clone(),
-            sha512: project_version.files[0].hashes["sha512"].to_string()
+            sha512: project_version.files[0].hashes["sha512"].to_string().replace("\"", "")
         };
         pack.mods.insert(mc_mod.to_string(), toml::Value::try_from(&mod_version).expect("try_from"));
         println!("Found mod '{}' and added it to pack", mod_version.name.replace("\"", ""));
