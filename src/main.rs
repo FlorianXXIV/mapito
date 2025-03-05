@@ -223,6 +223,7 @@ fn main() {
         );
         let mut mods: Vec<String> = Vec::new();
         loop {
+            println!("Please enter next query or 'q'.");
             let query = read_line_to_string();
             if query == "q" {
                 break;
@@ -230,9 +231,14 @@ fn main() {
                 let slugs = search_package(&client, query, config.staging);
                 match slugs {
                     Some(sl) => {
-                        println!("Select mod from 0 to {}", sl.len() - 1);
-                        let i: usize = read_line_to_string().parse().expect("parse");
-                        mods.push(sl[i].clone());
+                        println!("Select mod from 0 to {} or 'q'", sl.len() - 1);
+                        let entry = read_line_to_string();
+                        if entry == "q" {
+                            continue;
+                        } else {
+                            let i: usize = entry.parse().expect("parse");
+                            mods.push(sl[i].clone());
+                        }
                     }
                     None => {}
                 }
