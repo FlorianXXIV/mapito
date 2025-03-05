@@ -10,14 +10,14 @@ use std::{
 
 use crate::client::Downloader;
 
-use argparse::{ArgumentParser, Store, StoreConst, StoreTrue};
+use argparse::{ArgumentParser, Store, StoreConst, StoreOption, StoreTrue};
 use colored::Colorize;
 use config::configure;
 use mrapi::{
     defines::{Version, LOADER, VT},
     interactions::{get_project_version, print_project_info, search_package},
 };
-use pack::create_pack;
+use pack::{create_pack, install_pack};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +35,7 @@ fn main() {
     let mut dl_id: String = String::new();
     let mut project_slug: String = String::new();
     let mut make_pack: bool = false;
+    let mut i_pack: String = String::new();
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
@@ -108,6 +109,18 @@ fn main() {
             StoreTrue,
             "interactively make a new pack",
         );
+
+        parser.refer(&mut i_pack).add_option(
+            &["--install-pack"],
+            Store,
+            "Install the specified pack to a mod folder, either given by --install-path or the default in the config.\n Does not install the modloader",
+        );
+
+        parser.refer(&mut config.install_path).add_option(
+            &["--install-path"],
+            StoreOption,
+            "The path of the modfolder the pack should be installed to."
+            );
 
         parser.parse_args_or_exit();
     }
@@ -233,6 +246,15 @@ fn main() {
             &mut mods,
             &config,
         );
+        return;
+    }
+
+    if !i_pack.is_empty() {
+        if config.install_path.is_some() {
+            install_pack(&client, i_pack, &config);
+        } else {
+            eprintln!("No install path given");
+        }
     }
 }
 

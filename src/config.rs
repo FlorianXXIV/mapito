@@ -17,6 +17,7 @@ pub struct Configuration {
     pub pack_path: String,
     pub mc_ver: String,
     pub staging: usize,
+    pub install_path: Option<String>,
 }
 
 pub fn configure() -> Result<Configuration, String> {
@@ -67,6 +68,7 @@ fn parse_config(body: String) -> Result<Configuration, String> {
             "pack_path" => config.pack_path = value.try_into().unwrap(),
             "mc_ver" => config.mc_ver = value.try_into().unwrap(),
             "staging" => config.staging = value.try_into().unwrap(),
+            "install_path" => config.install_path = Some(value.try_into().unwrap()),
             &_ => println!("Warning: unused key '{key}' in config file."),
         }
     }
@@ -82,5 +84,6 @@ fn get_default_cfg() -> Configuration {
         loader: LOADER::FABRIC,
         mc_ver: "latest".to_string(),
         staging: 0,
+        install_path: None,
     }
 }

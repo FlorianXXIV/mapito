@@ -1,10 +1,11 @@
 use std::fs::{create_dir_all, File};
-use std::io::Write;
+use std::io::{Read, Write};
 
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::{self, Table};
 
+use crate::client::Downloader;
 use crate::{
     config::{self, Configuration},
     mrapi::{
@@ -40,6 +41,7 @@ struct ModVersion {
     name: String,
     verstion_type: VT,
     file_url: String,
+    file_name: String,
     sha512: String,
 }
 
@@ -75,6 +77,7 @@ pub fn create_pack(
             sha512: project_version.files[0].hashes["sha512"]
                 .to_string()
                 .replace("\"", ""),
+            file_name: project_version.files[0].filename.clone(),
         };
         pack.mods.insert(
             mc_mod.to_string(),
@@ -104,6 +107,7 @@ pub fn create_pack(
             sha512: project_version.files[0].hashes["sha512"]
                 .to_string()
                 .replace("\"", ""),
+            file_name: project_version.files[0].filename.clone(),
         };
         if !pack.mods.contains_key(&project.slug) {
             pack.mods.insert(
@@ -121,7 +125,7 @@ pub fn create_pack(
     let mut pack_fd = File::create(
         config.pack_path.clone()
             + "/"
-            + &pack.name.to_lowercase().as_str().replace(" ", "_")
+            + &pack.name.to_lowercase().as_str().replace(" ", "-")
             + ".mtpck",
     )
     .expect("create");
@@ -136,4 +140,20 @@ pub fn create_pack(
         "Created Pack: {}, Minecraft-{}",
         pack.name, pack.version_info.mc_ver
     );
+}
+
+pub fn install_pack(client: &Client, name: String, config: &Configuration) {
+    let mut pack_fd = File::open(config.pack_path.clone() + "/" + name.to_lowercase().as_str().replace(" ", "-").as_str() + ".mtpck").expect("open");
+    let mut body = String::new();
+
+    pack_fd.read_to_string(&mut body).expect("read_to_string");
+
+    let pack = toml::from_str::<Pack>(&body).expect("from_string");
+
+    for (key, value) in pack.mods {
+        let mod_version: ModVersion = value.try_into().expect("try_into");
+        let dl_path = config.install_path.clone().unwrap() + "/" + &mod_version.file_name;
+        println!("Downloading '{key}' to '{dl_path}' ");
+        let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);
+    }
 }
