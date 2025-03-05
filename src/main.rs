@@ -155,43 +155,34 @@ fn main() {
     }
 
     if make_pack {
-        let mut buf = &mut String::new();
         let mut version_desc = MVDescriptor {
             mc_ver: "".to_string(),
             version_types: vec![VT::RELEASE],
             loader: LOADER::FABRIC,
         };
         println!("Please enter the Name of the new Pack:");
-        stdin().read_line(buf).expect("read_line");
-        let name = buf.to_string().replace("\n", "");
-        buf.clear();
+        let name = read_line_to_string();
         println!("Please enter the Minecraft version you want the pack to have:");
-        stdin().read_line(buf).expect("read_line");
-        version_desc.mc_ver = buf.to_string().replace("\n", "");
-        buf.clear();
+        version_desc.mc_ver = read_line_to_string();
         println!("Please select what loader you want to use:
             \n[0] - Fabric
             \n[1] - Quilt
             \n[2] - NeoForge
             \n[3] - Forge");
-        stdin().read_line(buf).expect("read_line");
-        match buf.to_string().replace("\n", "").as_str() {
+        match read_line_to_string().as_str() {
             "0" | "[0]" => version_desc.loader = LOADER::FABRIC,
             "1" | "[1]" => version_desc.loader = LOADER::QUILT,
             "2" | "[2]" => version_desc.loader = LOADER::NEOFORGE,
             "3" | "[3]" => version_desc.loader = LOADER::FORGE,
             _ => panic!("invalid input")
         }
-        buf.clear();
         println!("Please type in a list of version types you want to allow:
             \nExample: 'release beta'
             \nAllowed types: 'release' 'beta' 'alpha'");
-        stdin().read_line(buf).expect("read_line");
-        version_desc.version_types = buf
+        version_desc.version_types = read_line_to_string()
             .split_whitespace()
             .map(|vt| VT::from_str(vt).expect("from_str"))
             .collect();
-        buf.clear();
         println!("Please confirm your input:\n Pack Name: {name}\n Minecraft version: {}\n Mod Loader: {}\n version types: {}",
             version_desc.mc_ver,
             version_desc.loader.to_string(),
@@ -203,9 +194,7 @@ fn main() {
         println!("Now you can search for mods and add them to the pack, you can finish by entering 'q'");
         let mut mods: Vec<String> = Vec::new();
         loop {
-            stdin().read_line(buf).expect("read_line");
-            let query = buf.to_string().replace("\n", "");
-            buf.clear();
+            let query = read_line_to_string();
             if query == "q" {
                 break;
             } else {
@@ -213,14 +202,12 @@ fn main() {
                 match slugs {
                     Some(sl) => {
                         println!("Select mod from 0 to {}", sl.len()-1);
-                        stdin().read_line(buf).expect("read_line");
-                        let i:usize = buf.to_string().replace("\n", "").parse().expect("parse");
+                        let i:usize = read_line_to_string().parse().expect("parse");
                         mods.push(sl[i].clone());
                     },
                     None => {},
                 }
             }
-            buf.clear();
         }
         create_pack(&client, config.staging, name, version_desc, &mut mods, &config);
     }
@@ -243,4 +230,10 @@ fn confirm_input() -> bool {
         'n' | 'N' => false,
         _ => panic!("invalid option"),
     }
+}
+/// Reads one line from stdin and returns it as sanitized string
+fn read_line_to_string() -> String {
+    let buf = &mut String::new();
+    stdin().read_line(buf).expect("read_line");
+    buf.to_string().replace("\n", "").replace("\"", "")
 }
