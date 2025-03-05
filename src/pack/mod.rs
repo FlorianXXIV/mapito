@@ -86,7 +86,7 @@ pub fn create_pack(
             name: project_version.name,
             verstion_type: project_version.version_type,
             file_url: project_version.files[0].url.clone(),
-            sha512: project_version.files[0].hashes["sha512"].to_string()
+            sha512: project_version.files[0].hashes["sha512"].to_string().replace("\"", "")
         };
         if !pack.mods.contains_key(&project.slug) {
             pack.mods.insert(project.slug, toml::Value::try_from(&dependency_version).expect("try_from"));
@@ -100,3 +100,5 @@ pub fn create_pack(
     write!(&mut pack_fd, "{}", toml::to_string(&pack).expect("to_string")).expect("write");
     println!("Created Pack: {}, Minecraft-{}", pack.name, pack.version_info.mc_ver);
 }
+
+

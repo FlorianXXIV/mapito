@@ -141,7 +141,7 @@ fn main() {
             let filename = dl_version.files[0].filename.as_str();
             let path = &(config.download_path + "/" + filename);
             let _ = client
-                .download_file(path, dl_version.files[0].url.as_str())
+                .download_file(path, dl_version.files[0].url.as_str(), dl_version.files[0].hashes["sha512"].to_string().replace("\"", "").as_str())
                 .unwrap();
         } else {
             println!("Aborting")
