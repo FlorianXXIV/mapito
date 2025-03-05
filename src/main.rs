@@ -138,8 +138,15 @@ fn main() {
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };
-        let dl_version: Version = get_project_version(&client, config.staging, dl_id, version_desc)
+        let dl_version: Version = get_project_version(&client, config.staging, dl_id, version_desc.clone())
             .expect("get_project_version");
+        
+        let mut dependencies: Vec<Version> = Vec::new();
+        for dependency in dl_version.dependencies {
+            let dep_ver = get_project_version(&client, config.staging, dependency.project_id, version_desc.clone()).expect("get_project_version");
+            dependencies.push(dep_ver);
+        }
+        
         let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
@@ -155,7 +162,7 @@ fn main() {
         if confirm_input() {
             println!("Downloading to {}", &config.download_path);
             let filename = dl_version.files[0].filename.as_str();
-            let path = &(config.download_path + "/" + filename);
+            let path = &(config.download_path.clone() + "/" + filename);
             let _ = client
                 .download_file(
                     path,
@@ -167,7 +174,25 @@ fn main() {
                 )
                 .unwrap();
         } else {
-            println!("Aborting")
+            println!("Aborting");
+            return;
+        }
+
+        if !dependencies.is_empty() {
+            print!("Found the following dependencies:\n {}", dependencies
+                .iter()
+                .map(|dep| dep.name.clone() + ", " + &(dep.files[0].size as f64 / 1048576 as f64).to_string() + "MB\n")
+                .collect::<String>()
+                );
+            println!("Download these too?");
+            if confirm_input() {
+                for dep in dependencies {
+                    println!("Downloading {}", dep.name);
+                    let filename = dep.files[0].filename.as_str();
+                    let path = &(config.download_path.clone() + "/" + filename);
+                    let _ = client.download_file(path, dep.files[0].url.as_str(), dep.files[0].hashes["sha512"].to_string().replace("\"", "").as_str()).unwrap();
+                }
+            }
         }
         return;
     }
