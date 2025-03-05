@@ -163,11 +163,11 @@ fn main() {
         };
         println!("Please enter the Name of the new Pack:");
         stdin().read_line(buf).expect("read_line");
-        let name = buf.to_string();
+        let name = buf.to_string().replace("\n", "");
         buf.clear();
         println!("Please enter the Minecraft version you want the pack to have:");
         stdin().read_line(buf).expect("read_line");
-        version_desc.mc_ver = buf.to_string();
+        version_desc.mc_ver = buf.to_string().replace("\n", "");
         buf.clear();
         println!("Please select what loader you want to use:
             \n[0] - Fabric
@@ -192,6 +192,14 @@ fn main() {
             .map(|vt| VT::from_str(vt).expect("from_str"))
             .collect();
         buf.clear();
+        println!("Please confirm your input:\n Pack Name: {name}\n Minecraft version: {}\n Mod Loader: {}\n version types: {}",
+            version_desc.mc_ver,
+            version_desc.loader.to_string(),
+            version_desc.version_types.iter().map(|vt| vt.to_string() + " ").collect::<String>());
+        if !confirm_input() {
+            println!("Aborting pack Creation");
+            return;
+        }
         println!("Now you can search for mods and add them to the pack, you can finish by entering 'q'");
         let mut mods: Vec<String> = Vec::new();
         loop {
@@ -201,12 +209,12 @@ fn main() {
             if query == "q" {
                 break;
             } else {
-                let slugs = search_package(&client, buf.to_string(), config.staging);
+                let slugs = search_package(&client, query, config.staging);
                 match slugs {
                     Some(sl) => {
                         println!("Select mod from 0 to {}", sl.len()-1);
                         stdin().read_line(buf).expect("read_line");
-                        let i:usize = buf.to_string().parse().expect("try_into");
+                        let i:usize = buf.to_string().replace("\n", "").parse().expect("parse");
                         mods.push(sl[i].clone());
                     },
                     None => {},
