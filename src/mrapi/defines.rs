@@ -45,7 +45,7 @@ impl FromStr for VT {
     }
 }
 
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
 pub enum LOADER {
     FABRIC,
     QUILT,

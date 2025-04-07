@@ -16,7 +16,7 @@ use mrapi::{
     defines::{Version, LOADER, VT},
     interactions::{get_project_version, print_project_info, search_package},
 };
-use pack::{create_pack, install_pack, update_pack};
+use pack::{create_pack, install_pack, list_mods, open_pack, remove_pack, save_pack, update_pack};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -222,9 +222,9 @@ fn main() {
         Some(PackAction::UPDATE) => {
             println!("Please enter the name of the Pack you want to Update");
             let name = read_line_to_string();
-            update_pack(&client, name, &config)
+            update_pack(&client, name, &config).expect("update_pack");
         },
-        Some(PackAction::MODIFY) => todo!(),
+        Some(PackAction::MODIFY) => pack_modification_loop(&client, &config),
         Some(PackAction::INSTALL) => {
             if config.install_path.is_some() {
                 println!("please enter name of pack");
@@ -315,6 +315,106 @@ fn pack_creation_loop (client: &Client, config: &Configuration) {
         &config,
         );
     return;
+}
+
+fn pack_modification_loop(client: &Client, config: &Configuration) {
+    println!("please enter the name of pack you want to modify.");
+    let name = read_line_to_string();
+    let mut pack = open_pack(&name, config);
+    loop {
+        println!("choose category to modify:
+    0 - Name: {}
+    1 - Version Info
+            Minecraft Version: {}
+            Version Types: {}
+            Loader: {}
+    2 - Mods
+enter 'q' to quit.",
+            pack.name,
+            pack.version_info.mc_ver,
+            pack.version_info.version_types.iter().map(|vt| vt.to_string() + " ").collect::<String>(),
+            pack.version_info.loader.to_string());
+        let result = read_line_to_string();
+        match result.as_str() {
+            "0" => {
+                remove_pack(&name, config);
+                println!("enter a new name for the Pack.");
+                let new_name = read_line_to_string();
+                pack.name = new_name;
+                save_pack(config, pack);
+                return;
+            },
+            "1" =>{
+                let true_name = pack.name.clone();
+                pack.name = pack.name + "_tmp";
+                loop {
+                    println!("What do you want to change?");
+                    println!("  0 - Minecraft Version: {}", pack.version_info.mc_ver);
+                    println!("  1 - Version Types: {}", pack.version_info.version_types
+                        .iter()
+                        .map(|vt| vt.to_string() + " ").collect::<String>());
+                    println!("  2 - Loader: {}", pack.version_info.loader.to_string());
+                    println!("enter 'q' to quit.");
+                    match read_line_to_string().as_str() {
+                        "0" => {
+                            println!("enter a new minecraft version for the Pack.");
+                            pack.version_info.mc_ver = read_line_to_string();
+                        },
+                        "1" => {
+                            println!("enter new version types for the Pack.");
+                            pack.version_info.version_types = read_line_to_string()
+                                .split_whitespace()
+                                .map(|vt| VT::from_str(vt).expect("from_str"))
+                                .collect();
+                        },
+                        "2" => {
+                            println!("Please enter the loader you want to change to.");
+                            pack.version_info.loader = LOADER::from_str(&read_line_to_string()).expect("from_str");
+                        },
+                        "q" => break,
+                        _ => println!("unexpected input")
+                    }
+                }
+                save_pack(config, pack.clone());
+                println!("updating mods.");
+                match update_pack(client, pack.name.clone(), config) {
+                    Ok(_) => {
+                        pack = open_pack(&pack.name, config);
+                        remove_pack(&pack.name, config);
+                        pack.name = true_name;
+                        save_pack(config, pack.clone());
+                    },
+                    Err(_) => {
+                        remove_pack(&pack.name, config);
+                        pack.name = true_name;
+                    },
+                };
+                pack = open_pack(&pack.name, config);
+            },
+            "2" => {
+                loop {
+                    list_mods(&pack);
+                    println!("Choose an Action:");
+                    println!("  0 - add a mod");
+                    println!("  1 - remove a mod");
+                    println!("enter 'q' to quit");
+                    match read_line_to_string().as_str() {
+                        "0" => todo!(),
+                        "1" => {
+                            println!("Enter which mod to remove:");
+                            pack.mods.remove(&read_line_to_string());
+                            save_pack(config, pack.clone());
+                            open_pack(&pack.name, config);
+                        }
+                        "q" => break,
+                        _ => println!("unexpected input"),
+                    }
+                }
+            },
+            "q" => return,
+            _ => println!("unexpected input"),
+        }
+    }
 }
 
 fn confirm_input() -> bool {

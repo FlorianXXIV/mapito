@@ -1,4 +1,4 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, remove_file, File};
 use std::io::{Read, Write};
 
 use reqwest::blocking::Client;
@@ -15,11 +15,11 @@ use crate::{
     MVDescriptor,
 };
 
-#[derive(Deserialize, Serialize, Debug)]
-struct Pack {
-    name: String,
-    version_info: MVDescriptor,
-    mods: Table,
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Pack {
+    pub name: String,
+    pub version_info: MVDescriptor,
+    pub mods: Table,
 }
 
 impl Pack {
@@ -157,12 +157,12 @@ pub fn install_pack(client: &Client, name: String, config: &Configuration) {
     }
 }
 
-pub fn update_pack(client: &Client, name: String, config: &Configuration) {
+pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), String>{
     let mut pack = open_pack(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
         let mut mod_version: ModVersion = value.try_into().expect("try_into");
-        let project_version = get_project_version(client, config.staging, key.clone(), pack.version_info.clone()).expect("get_project_version");
+        let project_version = get_project_version(client, config.staging, key.clone(), pack.version_info.clone())?;
         if mod_version.version_number != project_version.version_number {
             println!("Found new version of {}\nOld: {}\nNew: {}",
                 mod_version.name,
@@ -185,10 +185,11 @@ pub fn update_pack(client: &Client, name: String, config: &Configuration) {
     let pack_name = pack.name.clone();
     save_pack(config, pack);
     println!("To install the Updated mods, use '--pack install' for {pack_name}");
+    Ok(())
 }
 
 /// open the pack file for the given modpack and return Pack object
-fn open_pack(name: &String, config: &Configuration) -> Pack {
+pub fn open_pack(name: &String, config: &Configuration) -> Pack {
     let mut pack_file = File::open(config.pack_path.clone() + "/"
         + name.clone().to_lowercase().as_str().replace(" ", "-").as_str()
         + ".mtpck")
@@ -202,7 +203,7 @@ fn open_pack(name: &String, config: &Configuration) -> Pack {
     pack
 }
 
-fn save_pack(config: &Configuration, pack: Pack) {
+pub fn save_pack(config: &Configuration, pack: Pack) {
     println!("Saving Changes for {}", pack.name);
     create_dir_all(config.pack_path.clone()).expect("create_dir_all");
     let mut pack_fd = File::create(
@@ -219,4 +220,20 @@ fn save_pack(config: &Configuration, pack: Pack) {
         toml::to_string(&pack).expect("to_string")
     )
     .expect("write");
+}
+
+pub fn remove_pack(name: &String, config: &Configuration) {
+    remove_file(config.pack_path.clone()
+        + "/"
+        + &name.to_lowercase().as_str().replace(" ", "-")
+        + ".mtpck",
+        ).expect("remove_file");
+}
+
+pub fn list_mods(pack: &Pack) {
+    println!("The Pack contains the following mods:");
+    for (key, info) in pack.mods.clone() {
+        let mod_verion: ModVersion = info.try_into().expect("try_into");
+        println!("  {key} - {}", mod_verion.name);
+    }
 }
