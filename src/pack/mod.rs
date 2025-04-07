@@ -7,7 +7,7 @@ use toml::{self, Table};
 
 use crate::client::Downloader;
 use crate::{
-    config::{self, Configuration},
+    config::Configuration,
     mrapi::{
         defines::{Dependency, LOADER, VT},
         interactions::{get_project_info, get_project_version},
