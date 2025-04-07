@@ -40,6 +40,7 @@ impl Pack {
 struct ModVersion {
     name: String,
     verstion_type: VT,
+    version_number: String,
     file_url: String,
     file_name: String,
     sha512: String,
@@ -73,6 +74,7 @@ pub fn create_pack(
         let mod_version = ModVersion {
             name: project_version.name,
             verstion_type: project_version.version_type,
+            version_number: project_version.version_number,
             file_url: project_version.files[0].url.clone(),
             sha512: project_version.files[0].hashes["sha512"]
                 .to_string()
@@ -103,6 +105,7 @@ pub fn create_pack(
         let dependency_version = ModVersion {
             name: project_version.name,
             verstion_type: project_version.version_type,
+            version_number: project_version.version_number,
             file_url: project_version.files[0].url.clone(),
             sha512: project_version.files[0].hashes["sha512"]
                 .to_string()
@@ -144,7 +147,7 @@ pub fn create_pack(
 
 pub fn install_pack(client: &Client, name: String, config: &Configuration) {
 
-    let (pack, _) = open_pack(&name, config);
+    let pack = open_pack(&name, config);
 
     for (key, value) in pack.mods {
         let mod_version: ModVersion = value.try_into().expect("try_into");
@@ -154,11 +157,41 @@ pub fn install_pack(client: &Client, name: String, config: &Configuration) {
     }
 }
 
+pub fn update_pack(client: &Client, name: String, config: &Configuration) {
+    let mut pack = open_pack(&name, config);
+    println!("Updating mod entries in {name} Modpack.");
+    for (key, value) in pack.mods.clone() {
+        let mut mod_version: ModVersion = value.try_into().expect("try_into");
+        let project_version = get_project_version(client, config.staging, key.clone(), pack.version_info.clone()).expect("get_project_version");
+        if mod_version.version_number != project_version.version_number {
+            println!("Found new version of {}\nOld: {}\nNew: {}",
+                mod_version.name,
+                mod_version.version_number,
+                project_version.version_number);
+            pack.mods.remove::<String>(&key.clone());
+            mod_version.name = project_version.name;
+            mod_version.verstion_type = project_version.version_type;
+            mod_version.version_number = project_version.version_number;
+            mod_version.file_url = project_version.files[0].url.clone();
+            mod_version.sha512 = project_version.files[0].hashes["sha512"]
+                .to_string()
+                .replace("\"", "");
+            mod_version.file_name = project_version.files[0].filename.clone();
+            pack.mods.insert(key, toml::Value::try_from(&mod_version).expect("try_from"));
+        } else {
+            println!("Mod {} is up to Date.", mod_version.name)
+        }
+    }
+    let pack_name = pack.name.clone();
+    save_pack(config, pack);
+    println!("To install the Updated mods, use '--pack install' for {pack_name}");
+}
+
 /// open the pack file for the given modpack and return Pack object
-fn open_pack(name: &String, config: &Configuration) -> (Pack, File) {
+fn open_pack(name: &String, config: &Configuration) -> Pack {
     let mut pack_file = File::open(config.pack_path.clone() + "/"
         + name.clone().to_lowercase().as_str().replace(" ", "-").as_str()
-        + ".mpck")
+        + ".mtpck")
         .expect("open");
     let mut body = String::new();
 
@@ -166,6 +199,24 @@ fn open_pack(name: &String, config: &Configuration) -> (Pack, File) {
 
     let pack = toml::from_str::<Pack>(&body).expect("from_string");
 
-    (pack, pack_file)
+    pack
 }
 
+fn save_pack(config: &Configuration, pack: Pack) {
+    println!("Saving Changes for {}", pack.name);
+    create_dir_all(config.pack_path.clone()).expect("create_dir_all");
+    let mut pack_fd = File::create(
+        config.pack_path.clone()
+            + "/"
+            + &pack.name.to_lowercase().as_str().replace(" ", "-")
+            + ".mtpck",
+    )
+    .expect("create");
+
+    write!(
+        &mut pack_fd,
+        "{}",
+        toml::to_string(&pack).expect("to_string")
+    )
+    .expect("write");
+}

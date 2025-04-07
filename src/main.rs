@@ -16,7 +16,7 @@ use mrapi::{
     defines::{Version, LOADER, VT},
     interactions::{get_project_version, print_project_info, search_package},
 };
-use pack::{create_pack, install_pack};
+use pack::{create_pack, install_pack, update_pack};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -219,7 +219,11 @@ fn main() {
     
     match pack_action {
         Some(PackAction::CREATE) => pack_creation_loop(&client, &config),
-        Some(PackAction::UPDATE) => todo!(),
+        Some(PackAction::UPDATE) => {
+            println!("Please enter the name of the Pack you want to Update");
+            let name = read_line_to_string();
+            update_pack(&client, name, &config)
+        },
         Some(PackAction::MODIFY) => todo!(),
         Some(PackAction::INSTALL) => {
             if config.install_path.is_some() {
