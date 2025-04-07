@@ -143,12 +143,8 @@ pub fn create_pack(
 }
 
 pub fn install_pack(client: &Client, name: String, config: &Configuration) {
-    let mut pack_fd = File::open(config.pack_path.clone() + "/" + name.to_lowercase().as_str().replace(" ", "-").as_str() + ".mtpck").expect("open");
-    let mut body = String::new();
 
-    pack_fd.read_to_string(&mut body).expect("read_to_string");
-
-    let pack = toml::from_str::<Pack>(&body).expect("from_string");
+    let (pack, _) = open_pack(&name, config);
 
     for (key, value) in pack.mods {
         let mod_version: ModVersion = value.try_into().expect("try_into");
@@ -157,3 +153,19 @@ pub fn install_pack(client: &Client, name: String, config: &Configuration) {
         let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);
     }
 }
+
+/// open the pack file for the given modpack and return Pack object
+fn open_pack(name: &String, config: &Configuration) -> (Pack, File) {
+    let mut pack_file = File::open(config.pack_path.clone() + "/"
+        + name.clone().to_lowercase().as_str().replace(" ", "-").as_str()
+        + ".mpck")
+        .expect("open");
+    let mut body = String::new();
+
+    pack_file.read_to_string(&mut body).expect("read_to_string");
+
+    let pack = toml::from_str::<Pack>(&body).expect("from_string");
+
+    (pack, pack_file)
+}
+
