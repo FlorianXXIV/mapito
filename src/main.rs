@@ -16,7 +16,7 @@ use mrapi::{
     defines::{Version, LOADER, VT},
     interactions::{get_project_version, print_project_info, search_package},
 };
-use pack::{create_pack, install_pack, list_mods, open_pack, remove_pack, save_pack, update_pack};
+use pack::{create_pack, install_pack, open_pack, remove_pack, save_pack, update_pack};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
@@ -393,7 +393,7 @@ enter 'q' to quit.",
             },
             "2" => {
                 loop {
-                    list_mods(&pack);
+                    pack.list_mods();
                     println!("Choose an Action:");
                     println!("  0 - add a mod");
                     println!("  1 - remove a mod");

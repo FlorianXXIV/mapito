@@ -34,6 +34,14 @@ impl Pack {
             mods: Table::new(),
         }
     }
+
+    pub fn list_mods(&self) {
+        println!("The Pack contains the following mods:");
+        for (key, info) in &self.mods {
+            let mod_verion: ModVersion = info.clone().try_into().expect("try_into");
+            println!("{key} - {}", mod_verion.name);
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -146,7 +154,6 @@ pub fn create_pack(
 }
 
 pub fn install_pack(client: &Client, name: String, config: &Configuration) {
-
     let pack = open_pack(&name, config);
 
     for (key, value) in pack.mods {
@@ -157,17 +164,22 @@ pub fn install_pack(client: &Client, name: String, config: &Configuration) {
     }
 }
 
-pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), String>{
+pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), String> {
     let mut pack = open_pack(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
         let mut mod_version: ModVersion = value.try_into().expect("try_into");
-        let project_version = get_project_version(client, config.staging, key.clone(), pack.version_info.clone())?;
+        let project_version = get_project_version(
+            client,
+            config.staging,
+            key.clone(),
+            pack.version_info.clone(),
+        )?;
         if mod_version.version_number != project_version.version_number {
-            println!("Found new version of {}\nOld: {}\nNew: {}",
-                mod_version.name,
-                mod_version.version_number,
-                project_version.version_number);
+            println!(
+                "Found new version of {}\nOld: {}\nNew: {}",
+                mod_version.name, mod_version.version_number, project_version.version_number
+            );
             pack.mods.remove::<String>(&key.clone());
             mod_version.name = project_version.name;
             mod_version.verstion_type = project_version.version_type;
@@ -177,7 +189,8 @@ pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Res
                 .to_string()
                 .replace("\"", "");
             mod_version.file_name = project_version.files[0].filename.clone();
-            pack.mods.insert(key, toml::Value::try_from(&mod_version).expect("try_from"));
+            pack.mods
+                .insert(key, toml::Value::try_from(&mod_version).expect("try_from"));
         } else {
             println!("Mod {} is up to Date.", mod_version.name)
         }
@@ -190,10 +203,18 @@ pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Res
 
 /// open the pack file for the given modpack and return Pack object
 pub fn open_pack(name: &String, config: &Configuration) -> Pack {
-    let mut pack_file = File::open(config.pack_path.clone() + "/"
-        + name.clone().to_lowercase().as_str().replace(" ", "-").as_str()
-        + ".mtpck")
-        .expect("open");
+    let mut pack_file = File::open(
+        config.pack_path.clone()
+            + "/"
+            + name
+                .clone()
+                .to_lowercase()
+                .as_str()
+                .replace(" ", "-")
+                .as_str()
+            + ".mtpck",
+    )
+    .expect("open");
     let mut body = String::new();
 
     pack_file.read_to_string(&mut body).expect("read_to_string");
@@ -223,17 +244,8 @@ pub fn save_pack(config: &Configuration, pack: Pack) {
 }
 
 pub fn remove_pack(name: &String, config: &Configuration) {
-    remove_file(config.pack_path.clone()
-        + "/"
-        + &name.to_lowercase().as_str().replace(" ", "-")
-        + ".mtpck",
-        ).expect("remove_file");
-}
-
-pub fn list_mods(pack: &Pack) {
-    println!("The Pack contains the following mods:");
-    for (key, info) in pack.mods.clone() {
-        let mod_verion: ModVersion = info.try_into().expect("try_into");
-        println!("  {key} - {}", mod_verion.name);
-    }
+    remove_file(
+        config.pack_path.clone() + "/" + &name.to_lowercase().as_str().replace(" ", "-") + ".mtpck",
+    )
+    .expect("remove_file");
 }
