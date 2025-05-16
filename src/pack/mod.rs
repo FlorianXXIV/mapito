@@ -1,48 +1,23 @@
 use std::fs::{create_dir_all, remove_file, File};
 use std::io::{Read, Write};
 
+use pack::Pack;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use toml::{self, Table};
+use toml::{self};
 
 use crate::client::Downloader;
+use crate::mc_info::VT;
 use crate::{
     config::Configuration,
     mrapi::{
-        defines::{Dependency, LOADER, VT},
+        defines::Dependency,
         interactions::{get_project_info, get_project_version},
     },
     MVDescriptor,
 };
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct Pack {
-    pub name: String,
-    pub version_info: MVDescriptor,
-    pub mods: Table,
-}
-
-impl Pack {
-    pub fn new() -> Self {
-        Pack {
-            name: "".to_string(),
-            version_info: MVDescriptor {
-                mc_ver: "".to_string(),
-                version_types: vec![VT::RELEASE, VT::BETA, VT::ALPHA],
-                loader: LOADER::FABRIC,
-            },
-            mods: Table::new(),
-        }
-    }
-
-    pub fn list_mods(&self) {
-        println!("The Pack contains the following mods:");
-        for (key, info) in &self.mods {
-            let mod_verion: ModVersion = info.clone().try_into().expect("try_into");
-            println!("{key} - {}", mod_verion.name);
-        }
-    }
-}
+pub mod pack;
 
 #[derive(Deserialize, Serialize, Debug)]
 struct ModVersion {

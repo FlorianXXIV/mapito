@@ -7,7 +7,7 @@ use std::{
 };
 use toml::{self, Table};
 
-use crate::mrapi::defines::{LOADER, VT};
+use crate::mc_info::{LOADER, VT};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {

@@ -1,53 +1,29 @@
+mod cli;
 mod client;
 mod config;
+mod mc_info;
 mod mrapi;
 mod pack;
+mod util;
 
-use std::{
-    io::{self, stdin},
-    str::FromStr,
-};
+use std::str::FromStr;
 
 use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
+use cli::cli_in::{confirm_input, read_line_to_string};
 use config::{configure, Configuration};
+use mc_info::{LOADER, VT};
 use mrapi::{
-    defines::{Version, LOADER, VT},
+    defines::Version,
     interactions::{get_project_version, print_project_info, search_package},
 };
-use pack::{create_pack, install_pack, open_pack, remove_pack, save_pack, update_pack};
+use pack::{
+    create_pack, install_pack, open_pack,
+    pack::{MVDescriptor, PackAction},
+    remove_pack, save_pack, update_pack,
+};
 use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct MVDescriptor {
-    mc_ver: String,
-    version_types: Vec<VT>,
-    loader: LOADER,
-}
-
-#[derive(Debug, Clone)]
-enum PackAction {
-    CREATE,
-    UPDATE,
-    MODIFY,
-    INSTALL,
-}
-
-impl FromStr for PackAction {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "create" | "Create" | "CREATE" => Ok(Self::CREATE),
-            "update" | "Update" | "UPDATE" => Ok(Self::UPDATE),
-            "modify" | "Modify" | "MODIFY" => Ok(Self::MODIFY),
-            "install" | "Install" | "INSTALL" => Ok(Self::INSTALL),
-            _ => Err("Invalid input".to_string()),
-        }
-    }
-}
 
 fn main() {
     //variables set by arguments
@@ -134,8 +110,8 @@ fn main() {
         parser.refer(&mut config.install_path).add_option(
             &["--install-path"],
             StoreOption,
-            "The path of the modfolder the pack should be installed to."
-            );
+            "The path of the modfolder the pack should be installed to.",
+        );
 
         parser.parse_args_or_exit();
     }
@@ -153,15 +129,22 @@ fn main() {
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };
-        let dl_version: Version = get_project_version(&client, config.staging, dl_id, version_desc.clone())
-            .expect("get_project_version");
-        
+        let dl_version: Version =
+            get_project_version(&client, config.staging, dl_id, version_desc.clone())
+                .expect("get_project_version");
+
         let mut dependencies: Vec<Version> = Vec::new();
         for dependency in dl_version.dependencies {
-            let dep_ver = get_project_version(&client, config.staging, dependency.project_id, version_desc.clone()).expect("get_project_version");
+            let dep_ver = get_project_version(
+                &client,
+                config.staging,
+                dependency.project_id,
+                version_desc.clone(),
+            )
+            .expect("get_project_version");
             dependencies.push(dep_ver);
         }
-        
+
         let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
         dl_size.truncate(6);
         println!(
@@ -194,18 +177,32 @@ fn main() {
         }
 
         if !dependencies.is_empty() {
-            print!("Found the following dependencies:\n {}", dependencies
-                .iter()
-                .map(|dep| dep.name.clone() + ", " + &(dep.files[0].size as f64 / 1048576 as f64).to_string() + "MB\n")
-                .collect::<String>()
-                );
+            print!(
+                "Found the following dependencies:\n {}",
+                dependencies
+                    .iter()
+                    .map(|dep| dep.name.clone()
+                        + ", "
+                        + &(dep.files[0].size as f64 / 1048576 as f64).to_string()
+                        + "MB\n")
+                    .collect::<String>()
+            );
             println!("Download these too?");
             if confirm_input() {
                 for dep in dependencies {
                     println!("Downloading {}", dep.name);
                     let filename = dep.files[0].filename.as_str();
                     let path = &(config.download_path.clone() + "/" + filename);
-                    let _ = client.download_file(path, dep.files[0].url.as_str(), dep.files[0].hashes["sha512"].to_string().replace("\"", "").as_str()).unwrap();
+                    let _ = client
+                        .download_file(
+                            path,
+                            dep.files[0].url.as_str(),
+                            dep.files[0].hashes["sha512"]
+                                .to_string()
+                                .replace("\"", "")
+                                .as_str(),
+                        )
+                        .unwrap();
                 }
             }
         }
@@ -216,14 +213,14 @@ fn main() {
         print_project_info(&client, config.staging, project_slug);
         return;
     }
-    
+
     match pack_action {
         Some(PackAction::CREATE) => pack_creation_loop(&client, &config),
         Some(PackAction::UPDATE) => {
             println!("Please enter the name of the Pack you want to Update");
             let name = read_line_to_string();
             update_pack(&client, name, &config).expect("update_pack");
-        },
+        }
         Some(PackAction::MODIFY) => pack_modification_loop(&client, &config),
         Some(PackAction::INSTALL) => {
             if config.install_path.is_some() {
@@ -233,13 +230,12 @@ fn main() {
             } else {
                 eprintln!("No install path given")
             }
-        },
+        }
         None => (),
     }
-   
 }
 
-fn pack_creation_loop (client: &Client, config: &Configuration) {
+fn pack_creation_loop(client: &Client, config: &Configuration) {
     let mut version_desc = MVDescriptor {
         mc_ver: "".to_string(),
         version_types: vec![VT::RELEASE],
@@ -313,7 +309,7 @@ fn pack_creation_loop (client: &Client, config: &Configuration) {
         version_desc,
         &mut mods,
         &config,
-        );
+    );
     return;
 }
 
@@ -322,7 +318,8 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
     let name = read_line_to_string();
     let mut pack = open_pack(&name, config);
     loop {
-        println!("choose category to modify:
+        println!(
+            "choose category to modify:
     0 - Name: {}
     1 - Version Info
             Minecraft Version: {}
@@ -332,8 +329,13 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
 enter 'q' to quit.",
             pack.name,
             pack.version_info.mc_ver,
-            pack.version_info.version_types.iter().map(|vt| vt.to_string() + " ").collect::<String>(),
-            pack.version_info.loader.to_string());
+            pack.version_info
+                .version_types
+                .iter()
+                .map(|vt| vt.to_string() + " ")
+                .collect::<String>(),
+            pack.version_info.loader.to_string()
+        );
         let result = read_line_to_string();
         match result.as_str() {
             "0" => {
@@ -343,36 +345,42 @@ enter 'q' to quit.",
                 pack.name = new_name;
                 save_pack(config, pack);
                 return;
-            },
-            "1" =>{
+            }
+            "1" => {
                 let true_name = pack.name.clone();
                 pack.name = pack.name + "_tmp";
                 loop {
                     println!("What do you want to change?");
                     println!("  0 - Minecraft Version: {}", pack.version_info.mc_ver);
-                    println!("  1 - Version Types: {}", pack.version_info.version_types
-                        .iter()
-                        .map(|vt| vt.to_string() + " ").collect::<String>());
+                    println!(
+                        "  1 - Version Types: {}",
+                        pack.version_info
+                            .version_types
+                            .iter()
+                            .map(|vt| vt.to_string() + " ")
+                            .collect::<String>()
+                    );
                     println!("  2 - Loader: {}", pack.version_info.loader.to_string());
                     println!("enter 'q' to quit.");
                     match read_line_to_string().as_str() {
                         "0" => {
                             println!("enter a new minecraft version for the Pack.");
                             pack.version_info.mc_ver = read_line_to_string();
-                        },
+                        }
                         "1" => {
                             println!("enter new version types for the Pack.");
                             pack.version_info.version_types = read_line_to_string()
                                 .split_whitespace()
                                 .map(|vt| VT::from_str(vt).expect("from_str"))
                                 .collect();
-                        },
+                        }
                         "2" => {
                             println!("Please enter the loader you want to change to.");
-                            pack.version_info.loader = LOADER::from_str(&read_line_to_string()).expect("from_str");
-                        },
+                            pack.version_info.loader =
+                                LOADER::from_str(&read_line_to_string()).expect("from_str");
+                        }
                         "q" => break,
-                        _ => println!("unexpected input")
+                        _ => println!("unexpected input"),
                     }
                 }
                 save_pack(config, pack.clone());
@@ -383,61 +391,34 @@ enter 'q' to quit.",
                         remove_pack(&pack.name, config);
                         pack.name = true_name;
                         save_pack(config, pack.clone());
-                    },
+                    }
                     Err(_) => {
                         remove_pack(&pack.name, config);
                         pack.name = true_name;
-                    },
+                    }
                 };
                 pack = open_pack(&pack.name, config);
-            },
-            "2" => {
-                loop {
-                    pack.list_mods();
-                    println!("Choose an Action:");
-                    println!("  0 - add a mod");
-                    println!("  1 - remove a mod");
-                    println!("enter 'q' to quit");
-                    match read_line_to_string().as_str() {
-                        "0" => todo!(),
-                        "1" => {
-                            println!("Enter which mod to remove:");
-                            pack.mods.remove(&read_line_to_string());
-                            save_pack(config, pack.clone());
-                            open_pack(&pack.name, config);
-                        }
-                        "q" => break,
-                        _ => println!("unexpected input"),
+            }
+            "2" => loop {
+                pack.list_mods();
+                println!("Choose an Action:");
+                println!("  0 - add a mod");
+                println!("  1 - remove a mod");
+                println!("enter 'q' to quit");
+                match read_line_to_string().as_str() {
+                    "0" => todo!(),
+                    "1" => {
+                        println!("Enter which mod to remove:");
+                        pack.mods.remove(&read_line_to_string());
+                        save_pack(config, pack.clone());
+                        open_pack(&pack.name, config);
                     }
+                    "q" => break,
+                    _ => println!("unexpected input"),
                 }
             },
             "q" => return,
             _ => println!("unexpected input"),
         }
     }
-}
-
-fn confirm_input() -> bool {
-    println!("proceed? [Y,n]");
-    let stdin = io::stdin();
-    let buf = &mut String::new();
-    let _ = stdin.read_line(buf);
-    let chars: Vec<char> = buf.chars().collect();
-
-    let request: char = match chars.first() {
-        Some(c) => *c,
-        None => 'y',
-    };
-
-    match request {
-        'y' | 'Y' | '\n' => true,
-        'n' | 'N' => false,
-        _ => panic!("invalid option"),
-    }
-}
-/// Reads one line from stdin and returns it as sanitized string
-fn read_line_to_string() -> String {
-    let buf = &mut String::new();
-    stdin().read_line(buf).expect("read_line");
-    buf.to_string().replace("\n", "").replace("\"", "")
 }
