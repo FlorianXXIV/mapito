@@ -6,7 +6,6 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::{self};
 
-use crate::client::Downloader;
 use crate::mc_info::VT;
 use crate::util::error::ApiError;
 use crate::{
@@ -70,17 +69,6 @@ pub fn create_pack(
         "Created Pack: {}, Minecraft-{}",
         pack.name, pack.version_info.mc_ver
     );
-}
-
-pub fn install_pack(client: &Client, name: String, config: &Configuration) {
-    let pack = Pack::open(&name, config);
-
-    for (key, value) in pack.mods {
-        let mod_version: ModVersion = value.try_into().expect("try_into");
-        let dl_path = config.install_path.clone().unwrap() + "/" + &mod_version.file_name;
-        println!("Downloading '{key}' to '{dl_path}' ");
-        let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);
-    }
 }
 
 pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), ApiError> {

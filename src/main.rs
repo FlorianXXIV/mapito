@@ -22,7 +22,7 @@ use mrapi::{
     interactions::{get_project_version, print_project_info, search_package},
 };
 use pack::{
-    create_pack, install_pack,
+    create_pack,
     pack::{MVDescriptor, Pack, PackAction},
     update_pack,
 };
@@ -237,9 +237,8 @@ fn main() {
         Some(PackAction::MODIFY) => pack_modification_loop(&client, &config),
         Some(PackAction::INSTALL) => {
             if config.install_path.is_some() {
-                println!("please enter name of pack");
-                let i_pack = read_line_to_string();
-                install_pack(&client, i_pack, &config);
+                let pack = query_pack(PackAction::INSTALL, &config);
+                pack.install(&client, &config);
             } else {
                 eprintln!("No install path given")
             }
@@ -306,22 +305,8 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
     let mut pack = query_pack(PackAction::MODIFY, config);
     loop {
         println!(
-            "choose category to modify:
-    0 - Name: {}
-    1 - Version Info
-            Minecraft Version: {}
-            Version Types: {}
-            Loader: {}
-    2 - ModsT
-enter 'q' to quit.",
-            pack.name,
-            pack.version_info.mc_ver,
-            pack.version_info
-                .version_types
-                .iter()
-                .map(|vt| vt.to_string() + " ")
-                .collect::<String>(),
-            pack.version_info.loader.to_string()
+"{}\nchoose a category to modify:\n0 - Name\n1 - Version Info\n\tMinecraft Version\n\tVersion Types\n\tLoader\n2 - Mods\nenter 'q' to quit.",
+            pack.to_string(),
         );
         let result = read_line_to_string();
         match result.as_str() {
