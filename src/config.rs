@@ -5,80 +5,26 @@ use std::{
     io::{ErrorKind, Read, Write},
     str::FromStr,
 };
-use toml;
+use toml::{self, Table};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum VT {
-    RELEASE,
-    BETA,
-    ALPHA,
+use crate::mc_info::{LOADER, VT};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Configuration {
+    pub release_type: VT,
+    pub loader: LOADER,
+    pub download_path: String,
+    pub pack_path: String,
+    pub mc_ver: String,
+    pub staging: usize,
+    pub install_path: Option<String>,
 }
 
-impl VT {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::RELEASE => String::from_str("release").expect("from_str"),
-            Self::BETA => String::from_str("beta").expect("from_str"),
-            Self::ALPHA => String::from_str("alpha").expect("from_str"),
-        }
-    }
-}
-
-impl FromStr for VT {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "release" | "RELEASE" => Ok(Self::RELEASE),
-            "beta" | "BETA" => Ok(Self::BETA),
-            "alpha" | "ALPHA" => Ok(Self::ALPHA),
-            _ => Err("invalid version type".to_string()),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub enum LOADER {
-    FABRIC,
-    QUILT,
-    NEOFORGE
-}
-
-impl LOADER {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::FABRIC => "fabric".to_string(),
-            Self::QUILT => "quilt".to_string(),
-            Self::NEOFORGE => "neoforge".to_string()
-        }
-    }
-}
-
-impl FromStr for LOADER {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "fabric" | "FABRIC" => Ok(Self::FABRIC),
-            "neoforge" | "NEOFORGE" => Ok(Self::NEOFORGE),
-            "quilt" | "QUILT" => Ok(Self::QUILT),
-            "forge" | "FORGE" => Err("This tool does not support Forge".to_string()),
-            _ => Err("Unknown Modloader".to_string())
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct Configuration {
-    release_type: VT,
-    loader: LOADER,
-    download_path: String,
-    pack_path: String,
-}
-
-pub fn configure() -> Result<(VT, String, String, LOADER), String> {
+pub fn configure() -> Result<Configuration, String> {
     let config: Configuration;
 
     let config_path = env::var("HOME").unwrap() + "/.config/modrinth-apitool";
-    let mut config_fd = match File::open(config_path + "/config.toml") {
+    let mut config_fd = match File::open(config_path.clone() + "/config.toml") {
         Ok(v) => v,
         Err(e) => match e.kind() {
             ErrorKind::NotFound => create_config().expect("create_config"),
@@ -89,22 +35,55 @@ pub fn configure() -> Result<(VT, String, String, LOADER), String> {
     let mut body = String::new();
     config_fd.read_to_string(&mut body).expect("read_to_string");
 
-    config = toml::from_str(body.as_str()).expect("toml::from_str");
+    config = parse_config(body)?;
 
-    Ok((config.release_type, config.download_path, config.pack_path, config.loader))
+    let mut config_fd = File::create(config_path + "/config.toml").expect("open");
+
+    write!(&mut config_fd, "{}", toml::to_string(&config).unwrap()).expect("write config");
+    Ok(config)
 }
 
 fn create_config() -> Result<File, std::io::Error> {
     create_dir_all(env::var("HOME").unwrap() + "/.config/modrinth-apitool")?;
     let mut config =
         File::create(env::var("HOME").unwrap() + "/.config/modrinth-apitool/config.toml")?;
-    let defaults = Configuration {
+    let defaults = get_default_cfg();
+    write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
+
+    return Ok(config);
+}
+
+fn parse_config(body: String) -> Result<Configuration, String> {
+    let mut config = get_default_cfg();
+    let cfg_table = match body.parse::<Table>() {
+        Ok(v) => v,
+        Err(e) => return Err(e.message().to_string()),
+    };
+
+    for (key, value) in cfg_table {
+        match key.as_str() {
+            "release_type" => config.release_type = VT::from_str(value.as_str().unwrap()).unwrap(),
+            "loader" => config.loader = LOADER::from_str(value.as_str().unwrap()).unwrap(),
+            "download_path" => config.download_path = value.try_into().unwrap(),
+            "pack_path" => config.pack_path = value.try_into().unwrap(),
+            "mc_ver" => config.mc_ver = value.try_into().unwrap(),
+            "staging" => config.staging = value.try_into().unwrap(),
+            "install_path" => config.install_path = Some(value.try_into().unwrap()),
+            &_ => println!("Warning: unused key '{key}' in config file."),
+        }
+    }
+
+    Ok(config)
+}
+
+fn get_default_cfg() -> Configuration {
+    Configuration {
         release_type: VT::RELEASE,
         download_path: env::var("HOME").unwrap() + "/Downloads",
         pack_path: env::var("HOME").unwrap() + "/.config/modrinth-apitool/packs",
         loader: LOADER::FABRIC,
-    };
-    write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
-
-    return Ok(config);
+        mc_ver: "latest".to_string(),
+        staging: 0,
+        install_path: None,
+    }
 }
