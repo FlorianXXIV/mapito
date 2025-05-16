@@ -11,7 +11,10 @@ use std::str::FromStr;
 use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
-use cli::{input::{confirm_input, query_pack, read_line_to_string}, interactions::search_mods};
+use cli::{
+    input::{confirm_input, query_pack, read_line_to_string},
+    interactions::search_mods,
+};
 use config::{configure, Configuration};
 use mc_info::{LOADER, VT};
 use mrapi::{
@@ -130,18 +133,28 @@ fn main() {
             loader: config.loader.clone(),
         };
         let dl_version: Version =
-            get_project_version(&client, config.staging, dl_id, version_desc.clone())
-                .expect("get_project_version");
+            match get_project_version(&client, config.staging, dl_id, version_desc.clone()) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("{}", e.to_string());
+                    return;
+                }
+            };
 
         let mut dependencies: Vec<Version> = Vec::new();
         for dependency in dl_version.dependencies {
-            let dep_ver = get_project_version(
+            let dep_ver = match get_project_version(
                 &client,
                 config.staging,
                 dependency.project_id,
                 version_desc.clone(),
-            )
-            .expect("get_project_version");
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("get_project_version: {}", e.to_string());
+                    continue;
+                }
+            };
             dependencies.push(dep_ver);
         }
 
@@ -285,14 +298,7 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     );
     let mods: Vec<String> = search_mods(client, config);
 
-    create_pack(
-        &client,
-        config.staging,
-        name,
-        version_desc,
-        &mods,
-        &config,
-    );
+    create_pack(&client, config.staging, name, version_desc, &mods, &config);
     return;
 }
 
@@ -393,7 +399,7 @@ enter 'q' to quit.",
                             pack.add_mod(&item, client, config.staging);
                         }
                         pack.save(config);
-                    },
+                    }
                     "1" => {
                         println!("Enter which mod to remove:");
                         pack.mods.remove(&read_line_to_string());

@@ -8,6 +8,7 @@ use toml::{self};
 
 use crate::client::Downloader;
 use crate::mc_info::VT;
+use crate::util::error::ApiError;
 use crate::{
     config::Configuration,
     mrapi::
@@ -82,7 +83,7 @@ pub fn install_pack(client: &Client, name: String, config: &Configuration) {
     }
 }
 
-pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), String> {
+pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), ApiError> {
     let mut pack = Pack::open(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {

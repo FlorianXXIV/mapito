@@ -1,8 +1,8 @@
 use colored::Colorize;
 use reqwest::{blocking::Client, Url};
-use serde_json::Value;
+use serde_json::{Value};
 
-use crate::MVDescriptor;
+use crate::{util::error::ApiError, MVDescriptor};
 
 use super::{
     constants::{API_URL, LIMIT, MEMBERS, OFFSET, PROJECT, QUERY, SEARCH, VERSION},
@@ -129,17 +129,27 @@ pub fn get_project_version(
     staging: usize,
     project_slug: String,
     version_desc: MVDescriptor,
-) -> Result<Version, String> {
+) -> Result<Version, ApiError> {
     let mut project_version: Option<Version> = None;
-    let versions: Vec<Version> = serde_json::from_value(
-        request_api(
-            client,
-            staging,
-            &(PROJECT.to_owned() + "/" + &project_slug + VERSION),
-        )
-        .expect("request_api"),
-    )
-    .expect("from_value");
+    let versions: Vec<Version> = match serde_json::from_value(
+            match request_api(
+                            client,
+                            staging,
+                            &(PROJECT.to_owned() + "/" + &project_slug + VERSION),
+                        ) {
+                Ok(v) => {v},
+                Err(e) => {
+                    println!("{}", e.to_string());
+                    return Err(ApiError::not_found());
+                },
+            },
+        ) {
+        Ok(v) => {v},
+        Err(e) => {
+            println!("{}", e.to_string());
+            return Err(ApiError::invalid_data());
+        },
+    };
     for version in versions {
         if (version.game_versions.contains(&version_desc.mc_ver) || version_desc.mc_ver == "latest")
             && version_desc.version_types.contains(&version.version_type)
@@ -151,7 +161,7 @@ pub fn get_project_version(
     }
 
     if project_version.is_none() {
-        return Err("Specified Mod Version not found".to_string());
+        return Err(ApiError::not_found());
     }
 
     Ok(project_version.expect("Unknown Error"))
