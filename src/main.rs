@@ -11,7 +11,7 @@ use std::str::FromStr;
 use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
-use cli::cli_in::{confirm_input, read_line_to_string};
+use cli::{input::{confirm_input, query_pack, read_line_to_string}, interactions::search_mods};
 use config::{configure, Configuration};
 use mc_info::{LOADER, VT};
 use mrapi::{
@@ -119,7 +119,7 @@ fn main() {
     let client = Client::new();
 
     if !search.is_empty() {
-        search_package(&client, search, config.staging);
+        search_package(&client, &search, config.staging, None, None);
         return;
     }
 
@@ -231,6 +231,10 @@ fn main() {
                 eprintln!("No install path given")
             }
         }
+        Some(PackAction::REMOVE) => {
+            let pack = query_pack(PackAction::REMOVE, &config);
+            pack.remove(&config);
+        }
         None => (),
     }
 }
@@ -279,44 +283,21 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     println!(
         "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
     );
-    let mut mods: Vec<String> = Vec::new();
-    loop {
-        println!("Please enter next query or 'q'.");
-        let query = read_line_to_string();
-        if query == "q" {
-            break;
-        } else {
-            let slugs = search_package(&client, query, config.staging);
-            match slugs {
-                Some(sl) => {
-                    println!("Select mod from 0 to {} or 'q'", sl.len() - 1);
-                    let entry = read_line_to_string();
-                    if entry == "q" {
-                        continue;
-                    } else {
-                        let i: usize = entry.parse().expect("parse");
-                        mods.push(sl[i].clone());
-                    }
-                }
-                None => {}
-            }
-        }
-    }
+    let mods: Vec<String> = search_mods(client, config);
+
     create_pack(
         &client,
         config.staging,
         name,
         version_desc,
-        &mut mods,
+        &mods,
         &config,
     );
     return;
 }
 
 fn pack_modification_loop(client: &Client, config: &Configuration) {
-    println!("please enter the name of pack you want to modify.");
-    let name = read_line_to_string();
-    let mut pack = Pack::open(&name, config);
+    let mut pack = query_pack(PackAction::MODIFY, config);
     loop {
         println!(
             "choose category to modify:
@@ -325,7 +306,7 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
             Minecraft Version: {}
             Version Types: {}
             Loader: {}
-    2 - Mods
+    2 - ModsT
 enter 'q' to quit.",
             pack.name,
             pack.version_info.mc_ver,
@@ -402,11 +383,17 @@ enter 'q' to quit.",
             "2" => loop {
                 pack.list_mods();
                 println!("Choose an Action:");
-                println!("  0 - add a mod");
+                println!("  0 - add mods");
                 println!("  1 - remove a mod");
                 println!("enter 'q' to quit");
                 match read_line_to_string().as_str() {
-                    "0" => todo!(),
+                    "0" => {
+                        let mods = search_mods(client, config);
+                        for item in mods {
+                            pack.add_mod(&item, client, config.staging);
+                        }
+                        pack.save(config);
+                    },
                     "1" => {
                         println!("Enter which mod to remove:");
                         pack.mods.remove(&read_line_to_string());

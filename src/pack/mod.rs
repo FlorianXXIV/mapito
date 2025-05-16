@@ -10,10 +10,9 @@ use crate::client::Downloader;
 use crate::mc_info::VT;
 use crate::{
     config::Configuration,
-    mrapi::{
-        defines::Dependency,
-        interactions::{get_project_info, get_project_version},
-    },
+    mrapi::
+        interactions::get_project_version
+    ,
     MVDescriptor,
 };
 
@@ -40,71 +39,15 @@ pub fn create_pack(
     staging: usize,
     name: String,
     version_desc: MVDescriptor,
-    mods: &mut Vec<String>,
+    mods: &Vec<String>,
     config: &Configuration,
 ) {
     let mut pack = Pack::new();
     pack.name = name;
     pack.version_info = version_desc.clone();
 
-    let mut dependencies: Vec<Dependency> = Vec::new();
-
     for mc_mod in mods {
-        println!("Looking for {mc_mod}");
-        let project_version =
-            get_project_version(client, staging, mc_mod.clone(), version_desc.clone())
-                .expect("get_project_version");
-        let mod_version = ModVersion {
-            name: project_version.name,
-            verstion_type: project_version.version_type,
-            version_number: project_version.version_number,
-            file_url: project_version.files[0].url.clone(),
-            sha512: project_version.files[0].hashes["sha512"]
-                .to_string()
-                .replace("\"", ""),
-            file_name: project_version.files[0].filename.clone(),
-        };
-        pack.mods.insert(
-            mc_mod.to_string(),
-            toml::Value::try_from(&mod_version).expect("try_from"),
-        );
-        println!(
-            "Found mod '{}' and added it to pack",
-            mod_version.name.replace("\"", "")
-        );
-        for dependency in project_version.dependencies {
-            if dependency.dependency_type == "required" && !dependencies.contains(&dependency) {
-                dependencies.push(dependency);
-            }
-        }
-    }
-
-    for dependency in dependencies {
-        let project = get_project_info(client, staging, dependency.project_id.clone())
-            .expect("get_project_info");
-        let project_version =
-            get_project_version(client, staging, dependency.project_id, version_desc.clone())
-                .expect("get_project_version");
-        let dependency_version = ModVersion {
-            name: project_version.name,
-            verstion_type: project_version.version_type,
-            version_number: project_version.version_number,
-            file_url: project_version.files[0].url.clone(),
-            sha512: project_version.files[0].hashes["sha512"]
-                .to_string()
-                .replace("\"", ""),
-            file_name: project_version.files[0].filename.clone(),
-        };
-        if !pack.mods.contains_key(&project.slug) {
-            pack.mods.insert(
-                project.slug,
-                toml::Value::try_from(&dependency_version).expect("try_from"),
-            );
-            println!(
-                "Added dependency '{}' to pack",
-                dependency_version.name.replace("\"", "")
-            );
-        }
+        pack.add_mod(mc_mod, client, staging);
     }
 
     create_dir_all(config.pack_path.clone()).expect("create_dir_all");

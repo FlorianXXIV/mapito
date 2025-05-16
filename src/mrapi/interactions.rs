@@ -5,14 +5,24 @@ use serde_json::Value;
 use crate::MVDescriptor;
 
 use super::{
-    constants::{API_URL, MEMBERS, PROJECT, QUERY, SEARCH, VERSION},
+    constants::{API_URL, LIMIT, MEMBERS, OFFSET, PROJECT, QUERY, SEARCH, VERSION},
     defines::{Member, Project, SearchResp, Version},
 };
 
-pub fn search_package(client: &Client, query: String, staging: usize) -> Option<Vec<String>> {
+pub fn search_package(client: &Client, query: &String, staging: usize, limit: Option<usize>, offset: Option<usize>) -> Option<Vec<String>> {
+    let par_limit = match limit {
+        Some(num) => {num.to_string()},
+        None => {"10".to_owned()},
+    };
+    
+    let par_offset = match offset {
+        Some(num) => {num.to_string()},
+        None => {"0".to_owned()},
+    };
+
     let query = Url::parse_with_params(
         (API_URL[staging].to_owned() + SEARCH).as_str(),
-        &[(QUERY, query)],
+        &[(QUERY, query), (LIMIT, &par_limit), (OFFSET, &par_offset)],
     )
     .unwrap();
     let query_response = match client.get(query).send().unwrap().json::<SearchResp>() {

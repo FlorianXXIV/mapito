@@ -1,1 +1,2 @@
-pub mod cli_in;
+pub mod input;
+pub mod interactions;

@@ -1,15 +1,16 @@
 use std::{
-    fs::{create_dir_all, remove_file, File},
-    io::{Read, Write},
-    str::FromStr,
+    fmt::Display, fs::{create_dir_all, remove_file, File}, io::{Read, Write}, str::FromStr
 };
 
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::Table;
 
 use crate::{
     config::Configuration,
     mc_info::{LOADER, VT},
+    mrapi::interactions::{get_project_info, get_project_version},
+    pack::ModVersion,
 };
 
 #[derive(Debug, Clone)]
@@ -18,17 +19,32 @@ pub enum PackAction {
     UPDATE,
     MODIFY,
     INSTALL,
+    REMOVE,
+}
+
+impl Display for PackAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let to_display = match self {
+            PackAction::CREATE => "create",
+            PackAction::UPDATE => "update",
+            PackAction::MODIFY => "modify",
+            PackAction::INSTALL => "install",
+            PackAction::REMOVE => "remove",
+        };
+        write!(f, "{}", to_display)
+    }
 }
 
 impl FromStr for PackAction {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "create" | "Create" | "CREATE" => Ok(Self::CREATE),
-            "update" | "Update" | "UPDATE" => Ok(Self::UPDATE),
-            "modify" | "Modify" | "MODIFY" => Ok(Self::MODIFY),
-            "install" | "Install" | "INSTALL" => Ok(Self::INSTALL),
+        match s.to_lowercase().as_str() {
+            "create" => Ok(Self::CREATE),
+            "update" => Ok(Self::UPDATE),
+            "modify" => Ok(Self::MODIFY),
+            "install" => Ok(Self::INSTALL),
+            "remove" => Ok(Self::REMOVE),
             _ => Err("Invalid input".to_string()),
         }
     }
@@ -112,7 +128,7 @@ impl Pack {
         )
         .expect("write");
     }
-    
+
     /// remove pack from file system
     pub fn remove(&self, config: &Configuration) {
         remove_file(
@@ -122,5 +138,41 @@ impl Pack {
                 + ".mtpck",
         )
         .expect("remove_file");
+    }
+
+    /// adds a mod and its dependencies
+    pub fn add_mod(&mut self, mod_slug: &String, client: &Client, staging: usize) {
+        println!("Looking for {mod_slug}");
+        let project_version =
+            get_project_version(client, staging, mod_slug.clone(), self.version_info.clone())
+                .expect("get_project_version");
+        let mod_version = ModVersion {
+            name: project_version.name,
+            verstion_type: project_version.version_type,
+            version_number: project_version.version_number,
+            file_url: project_version.files[0].url.clone(),
+            sha512: project_version.files[0].hashes["sha512"]
+                .to_string()
+                .replace("\"", ""),
+            file_name: project_version.files[0].filename.clone(),
+        };
+        self.mods.insert(
+            mod_slug.to_string(),
+            toml::Value::try_from(&mod_version).expect("try_from"),
+        );
+        println!(
+            "Found mod '{}' and added it to pack",
+            mod_version.name.replace("\"", "")
+        );
+        for dependency in project_version.dependencies {
+            let dep_slug = get_project_info(client, staging, dependency.project_id)
+                .expect("get_project_info")
+                .slug;
+            if dependency.dependency_type == "required" && !self.mods.contains_key(&dep_slug) {
+                println!("Dependency: ");
+
+                self.add_mod(&dep_slug, client, staging);
+            }
+        }
     }
 }
