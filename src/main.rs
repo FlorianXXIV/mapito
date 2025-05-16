@@ -19,9 +19,9 @@ use mrapi::{
     interactions::{get_project_version, print_project_info, search_package},
 };
 use pack::{
-    create_pack, install_pack, open_pack,
-    pack::{MVDescriptor, PackAction},
-    remove_pack, save_pack, update_pack,
+    create_pack, install_pack,
+    pack::{MVDescriptor, Pack, PackAction},
+    update_pack,
 };
 use reqwest::blocking::Client;
 
@@ -316,7 +316,7 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
 fn pack_modification_loop(client: &Client, config: &Configuration) {
     println!("please enter the name of pack you want to modify.");
     let name = read_line_to_string();
-    let mut pack = open_pack(&name, config);
+    let mut pack = Pack::open(&name, config);
     loop {
         println!(
             "choose category to modify:
@@ -339,11 +339,11 @@ enter 'q' to quit.",
         let result = read_line_to_string();
         match result.as_str() {
             "0" => {
-                remove_pack(&name, config);
+                pack.remove(config);
                 println!("enter a new name for the Pack.");
                 let new_name = read_line_to_string();
                 pack.name = new_name;
-                save_pack(config, pack);
+                pack.save(config);
                 return;
             }
             "1" => {
@@ -383,21 +383,21 @@ enter 'q' to quit.",
                         _ => println!("unexpected input"),
                     }
                 }
-                save_pack(config, pack.clone());
+                pack.save(config);
                 println!("updating mods.");
                 match update_pack(client, pack.name.clone(), config) {
                     Ok(_) => {
-                        pack = open_pack(&pack.name, config);
-                        remove_pack(&pack.name, config);
+                        pack = Pack::open(&pack.name, config);
+                        pack.remove(config);
                         pack.name = true_name;
-                        save_pack(config, pack.clone());
+                        pack.save(config);
                     }
                     Err(_) => {
-                        remove_pack(&pack.name, config);
+                        pack.remove(config);
                         pack.name = true_name;
                     }
                 };
-                pack = open_pack(&pack.name, config);
+                pack = Pack::open(&pack.name, config);
             }
             "2" => loop {
                 pack.list_mods();
@@ -410,8 +410,8 @@ enter 'q' to quit.",
                     "1" => {
                         println!("Enter which mod to remove:");
                         pack.mods.remove(&read_line_to_string());
-                        save_pack(config, pack.clone());
-                        open_pack(&pack.name, config);
+                        pack.save(config);
+                        pack = Pack::open(&pack.name, config);
                     }
                     "q" => break,
                     _ => println!("unexpected input"),

@@ -1,5 +1,5 @@
-use std::fs::{create_dir_all, remove_file, File};
-use std::io::{Read, Write};
+use std::fs::{create_dir_all, File};
+use std::io::{Write};
 
 use pack::Pack;
 use reqwest::blocking::Client;
@@ -129,7 +129,7 @@ pub fn create_pack(
 }
 
 pub fn install_pack(client: &Client, name: String, config: &Configuration) {
-    let pack = open_pack(&name, config);
+    let pack = Pack::open(&name, config);
 
     for (key, value) in pack.mods {
         let mod_version: ModVersion = value.try_into().expect("try_into");
@@ -140,7 +140,7 @@ pub fn install_pack(client: &Client, name: String, config: &Configuration) {
 }
 
 pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), String> {
-    let mut pack = open_pack(&name, config);
+    let mut pack = Pack::open(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
         let mut mod_version: ModVersion = value.try_into().expect("try_into");
@@ -171,56 +171,8 @@ pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Res
         }
     }
     let pack_name = pack.name.clone();
-    save_pack(config, pack);
+    pack.save(config);
     println!("To install the Updated mods, use '--pack install' for {pack_name}");
     Ok(())
 }
 
-/// open the pack file for the given modpack and return Pack object
-pub fn open_pack(name: &String, config: &Configuration) -> Pack {
-    let mut pack_file = File::open(
-        config.pack_path.clone()
-            + "/"
-            + name
-                .clone()
-                .to_lowercase()
-                .as_str()
-                .replace(" ", "-")
-                .as_str()
-            + ".mtpck",
-    )
-    .expect("open");
-    let mut body = String::new();
-
-    pack_file.read_to_string(&mut body).expect("read_to_string");
-
-    let pack = toml::from_str::<Pack>(&body).expect("from_string");
-
-    pack
-}
-
-pub fn save_pack(config: &Configuration, pack: Pack) {
-    println!("Saving Changes for {}", pack.name);
-    create_dir_all(config.pack_path.clone()).expect("create_dir_all");
-    let mut pack_fd = File::create(
-        config.pack_path.clone()
-            + "/"
-            + &pack.name.to_lowercase().as_str().replace(" ", "-")
-            + ".mtpck",
-    )
-    .expect("create");
-
-    write!(
-        &mut pack_fd,
-        "{}",
-        toml::to_string(&pack).expect("to_string")
-    )
-    .expect("write");
-}
-
-pub fn remove_pack(name: &String, config: &Configuration) {
-    remove_file(
-        config.pack_path.clone() + "/" + &name.to_lowercase().as_str().replace(" ", "-") + ".mtpck",
-    )
-    .expect("remove_file");
-}
