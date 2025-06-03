@@ -35,7 +35,6 @@ fn main() {
     let mut dl_id: String = String::new();
     let mut project_slug: String = String::new();
     let mut pack_action: Option<PackAction> = None;
-
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();

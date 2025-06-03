@@ -59,9 +59,7 @@ impl<'de> Deserialize<'de> for LOADER {
     {
         match Self::from_str(&String::deserialize(deserializer)?) {
             Ok(loader) => Ok(loader),
-            Err(e) => Err(serde::de::Error::custom(
-                e,
-            )),
+            Err(e) => Err(serde::de::Error::custom(e)),
         }
     }
 }
@@ -96,8 +94,12 @@ pub struct MVDescriptor {
     pub version_types: Vec<VT>,
     pub loader: LOADER,
 }
-/// This represents any Given minecraft release version
-/// patch is Optional as it is not represented every time.
+/// This represents any Given minecraft version.
+///
+/// if snapshot is false, then the version will be represented as normal ("1.20.1")
+/// otherwise it major and minor will be used with ident to represent the
+/// version as a snapshot. (22w14a)
+///
 /// if latest is true, this object will display itself as "latest"
 /// the other fields will be ignored.
 #[derive(Debug, Clone)]
@@ -105,7 +107,9 @@ pub struct MCVersion {
     major: usize,
     minor: usize,
     patch: Option<usize>,
+    ident: Option<Vec<char>>,
     latest: bool,
+    snapshot: bool,
 }
 
 impl Display for MCVersion {
@@ -115,10 +119,17 @@ impl Display for MCVersion {
             None => "".to_owned(),
         };
 
+        let ident = match &self.ident {
+            Some(i) => i.iter().collect(),
+            None => "".to_owned(),
+        };
+
         if self.latest {
             write!(f, "latest")
-        } else {
+        } else if !self.snapshot {
             write!(f, "{}.{}{}", self.major, self.minor, patch)
+        } else {
+            write!(f, "{}w{}{}", self.major, self.minor, ident)
         }
     }
 }
@@ -151,39 +162,62 @@ impl FromStr for MCVersion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "latest" {
-            return Ok(MCVersion {
-                major: 0,
-                minor: 0,
-                patch: Some(0),
-                latest: true,
-            });
+            return Ok(MCVersion::new());
         }
-        let reg = Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}$").unwrap();
-        let Some(caps) = reg.captures(s) else {
-            return Err("Invalid version Format".to_owned());
+
+        let mut is_snap = false;
+        let mut patch = None;
+        let mut ident: Option<Vec<char>> = None;
+
+        let relreg = Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}$").unwrap();
+        let snareg = Regex::new(r"^([0-9]{2})w([0-9]{2})([a-z]+)$").unwrap();
+        let caps = match relreg.captures(s) {
+            Some(caps) => caps,
+            None => match snareg.captures(s) {
+                Some(caps) => {
+                    is_snap = true;
+                    caps
+                }
+                None => return Err("Invalid version Format".to_owned()),
+            },
         };
+
+        if !is_snap {
+            patch = match caps.get(3) {
+                Some(p) => Some(usize::from_str(p.as_str()).expect("patch from str")),
+                None => None,
+            };
+        } else {
+            ident = match caps.get(3) {
+                Some(i) => Some(i.as_str().chars().collect()),
+                None => None,
+            }
+        }
+
         Ok(MCVersion {
             major: usize::from_str(caps.get(1).unwrap().as_str()).expect("major from str"),
             minor: usize::from_str(caps.get(2).unwrap().as_str()).expect("minor from str"),
-            patch: match caps.get(3) {
-                Some(val) => Some(usize::from_str(val.as_str()).expect("patch from str")),
-                None => None,
-            },
+            patch: patch,
+            ident: ident,
             latest: false,
+            snapshot: is_snap,
         })
     }
 }
 
 impl MCVersion {
+    /// return a new MCVersion, it will be set to latest
     pub fn new() -> Self {
         MCVersion {
             major: 0,
             minor: 0,
             patch: Some(0),
+            ident: None,
             latest: true,
+            snapshot: false,
         }
     }
-    
+
     /// returns true if other version is considered compatible
     /// versions are considered compatible if they are equal
     /// or if we have no patch version and other has the same major and minor
@@ -192,14 +226,24 @@ impl MCVersion {
         if self == other {
             return true;
         }
-        self.patch.is_none() && !self.latest && self.major == other.major && self.minor == other.minor
+        if self.snapshot {
+            return false;
+        }
+        self.patch.is_none()
+            && !self.latest
+            && self.major == other.major
+            && self.minor == other.minor
     }
 }
 
 /// MCVersion is equal if x1.y1.z1 == x2.y2.z2 or if both have latest set to true
 impl PartialEq for MCVersion {
     fn eq(&self, other: &Self) -> bool {
-        self.major == other.major && self.minor == other.minor && self.patch == other.patch || self.latest == other.latest
+        self.major == other.major
+            && self.minor == other.minor
+            && self.patch == other.patch
+            && self.snapshot == other.snapshot
+            || self.latest == other.latest
     }
 }
 
@@ -211,6 +255,9 @@ impl PartialOrd for MCVersion {
             }
             return Some(std::cmp::Ordering::Greater);
         }
+        if !self.snapshot && other.snapshot || self.snapshot && !other.snapshot{
+            return None;
+        }
         match self.major.partial_cmp(&other.major) {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
@@ -219,11 +266,14 @@ impl PartialOrd for MCVersion {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
-        match self.patch.partial_cmp(&other.patch) {
-            Some(core::cmp::Ordering::Equal) => {
-                Some(std::cmp::Ordering::Equal)
+        if !self.snapshot {
+            match self.patch.partial_cmp(&other.patch) {
+                ord => return ord,
             }
-            ord => return ord,
+        } else {
+            match self.ident.iter().partial_cmp(&other.ident) {
+                ord => return ord,
+            }
         }
     }
 }
