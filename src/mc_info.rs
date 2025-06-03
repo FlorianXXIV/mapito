@@ -169,7 +169,9 @@ impl FromStr for MCVersion {
         let mut patch = None;
         let mut ident: Option<Vec<char>> = None;
 
-        let relreg = Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}$").unwrap();
+        let relreg =
+            Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}(?:-(?:rc|pre)[0-9]){0,1}$")
+                .unwrap();
         let snareg = Regex::new(r"^([0-9]{2})w([0-9]{2})([a-z]+)$").unwrap();
         let caps = match relreg.captures(s) {
             Some(caps) => caps,
@@ -219,9 +221,8 @@ impl MCVersion {
     }
 
     /// returns true if other version is considered compatible
-    /// versions are considered compatible if they are equal
-    /// or if we have no patch version and other has the same major and minor
-    /// version.
+    /// versions are considered compatible if they do not
+    /// specify a patch version but are otherwise the same.
     pub fn is_compat(&self, other: &Self) -> bool {
         if self == other {
             return true;
@@ -229,21 +230,21 @@ impl MCVersion {
         if self.snapshot {
             return false;
         }
-        self.patch.is_none()
-            && !self.latest
-            && self.major == other.major
-            && self.minor == other.minor
+        if other.patch.is_none() {
+            return !self.latest && self.major == other.major && self.minor == other.minor;
+        }
+        false
     }
 }
 
 /// MCVersion is equal if x1.y1.z1 == x2.y2.z2 or if both have latest set to true
 impl PartialEq for MCVersion {
     fn eq(&self, other: &Self) -> bool {
-        self.major == other.major
+        (self.major == other.major
             && self.minor == other.minor
             && self.patch == other.patch
-            && self.snapshot == other.snapshot
-            || self.latest == other.latest
+            && self.snapshot == other.snapshot)
+            || (self.latest == other.latest && self.latest == true)
     }
 }
 
@@ -255,7 +256,7 @@ impl PartialOrd for MCVersion {
             }
             return Some(std::cmp::Ordering::Greater);
         }
-        if !self.snapshot && other.snapshot || self.snapshot && !other.snapshot{
+        if !self.snapshot && other.snapshot || self.snapshot && !other.snapshot {
             return None;
         }
         match self.major.partial_cmp(&other.major) {
