@@ -19,7 +19,7 @@ use crate::{
 pub mod pack;
 
 #[derive(Deserialize, Serialize, Debug)]
-struct ModVersion {
+struct PackMod {
     name: String,
     verstion_type: VT,
     version_number: String,
@@ -28,7 +28,7 @@ struct ModVersion {
     sha512: String,
 }
 
-impl PartialEq for ModVersion {
+impl PartialEq for PackMod {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
     }
@@ -75,7 +75,7 @@ pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Res
     let mut pack = Pack::open(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
-        let mut mod_version: ModVersion = value.try_into().expect("try_into");
+        let mut mod_version: PackMod = value.try_into().expect("try_into");
         let project_version = get_project_version(
             client,
             config.staging,

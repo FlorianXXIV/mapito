@@ -183,6 +183,17 @@ impl MCVersion {
             latest: true,
         }
     }
+    
+    /// returns true if other version is considered compatible
+    /// versions are considered compatible if they are equal
+    /// or if we have no patch version and other has the same major and minor
+    /// version.
+    pub fn is_compat(&self, other: &Self) -> bool {
+        if self == other {
+            return true;
+        }
+        self.patch.is_none() && !self.latest && self.major == other.major && self.minor == other.minor
+    }
 }
 
 /// MCVersion is equal if x1.y1.z1 == x2.y2.z2 or if both have latest set to true

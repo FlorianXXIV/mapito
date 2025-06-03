@@ -14,7 +14,7 @@ use crate::{
     config::Configuration,
     mc_info::{MCVersion, MVDescriptor, LOADER, VT},
     mrapi::interactions::{get_project_info, get_project_version},
-    pack::ModVersion,
+    pack::PackMod,
 };
 
 #[derive(Debug, Clone)]
@@ -143,7 +143,7 @@ impl Pack {
         let project_version =
             get_project_version(client, staging, mod_slug.clone(), self.version_info.clone())
                 .expect("get_project_version");
-        let mod_version = ModVersion {
+        let mod_version = PackMod {
             name: project_version.name,
             verstion_type: project_version.version_type,
             version_number: project_version.version_number,
@@ -175,7 +175,7 @@ impl Pack {
 
     pub fn install(&self, client: &Client, config: &Configuration) {
         for (key, value) in &self.mods {
-            let mod_version: ModVersion = value.clone().try_into().expect("try_into");
+            let mod_version: PackMod = value.clone().try_into().expect("try_into");
             let dl_path = config.install_path.clone().unwrap() + "/" + &mod_version.file_name;
             println!("Downloading '{key}' to '{dl_path}' ");
             let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);

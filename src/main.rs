@@ -129,7 +129,7 @@ fn main() {
 
     if !dl_id.is_empty() {
         let version_desc = MVDescriptor {
-            mc_ver: MCVersion::from_str(&config.mc_ver).expect("from_str"),
+            mc_ver: config.mc_ver,
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::mc_info::MCVersion;
 use crate::mc_info::LOADER;
 use crate::mc_info::VT;
 
@@ -16,7 +17,7 @@ pub struct SearchResp {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Version {
-    pub game_versions: Vec<String>,
+    pub game_versions: Vec<MCVersion>,
     pub loaders: Vec<LOADER>,
     pub name: String,
     pub version_number: String,
@@ -52,7 +53,7 @@ pub struct Project {
     pub updated: String,
     pub license: License,
     pub downloads: u32,
-    pub game_versions: Vec<String>,
+    pub game_versions: Vec<MCVersion>,
     pub categories: Vec<String>,
     pub loaders: Vec<LOADER>,
     pub source_url: Option<String>,
