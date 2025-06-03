@@ -151,7 +151,7 @@ pub fn get_project_version(
         },
     };
     for version in versions {
-        if (version.game_versions.contains(&version_desc.mc_ver.to_string()) || version_desc.mc_ver.to_string() == "latest")
+        if (version.game_versions.iter().any(|gv| version_desc.mc_ver.is_compat(gv)) || version_desc.mc_ver.to_string() == "latest")
             && version_desc.version_types.contains(&version.version_type)
             && version.loaders.contains(&version_desc.loader)
         {

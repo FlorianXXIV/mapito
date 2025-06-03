@@ -7,7 +7,7 @@ use std::{
 };
 use toml::{self, Table};
 
-use crate::mc_info::{LOADER, VT};
+use crate::mc_info::{MCVersion, LOADER, VT};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -15,7 +15,7 @@ pub struct Configuration {
     pub loader: LOADER,
     pub download_path: String,
     pub pack_path: String,
-    pub mc_ver: String,
+    pub mc_ver: MCVersion,
     pub staging: usize,
     pub install_path: Option<String>,
 }
@@ -102,7 +102,7 @@ fn get_default_cfg() -> Configuration {
             .unwrap()
             .to_owned(),
         loader: LOADER::FABRIC,
-        mc_ver: "latest".to_string(),
+        mc_ver: MCVersion::from_str("latest").expect("from_str"),
         staging: 0,
         install_path: None,
     }
