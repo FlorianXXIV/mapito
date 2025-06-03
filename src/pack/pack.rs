@@ -12,7 +12,7 @@ use toml::Table;
 use crate::{
     client::Downloader,
     config::Configuration,
-    mc_info::{LOADER, VT},
+    mc_info::{MCVersion, MVDescriptor, LOADER, VT},
     mrapi::interactions::{get_project_info, get_project_version},
     pack::ModVersion,
 };
@@ -55,13 +55,6 @@ impl FromStr for PackAction {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MVDescriptor {
-    pub mc_ver: String,
-    pub version_types: Vec<VT>,
-    pub loader: LOADER,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Pack {
     pub name: String,
     pub version_info: MVDescriptor,
@@ -74,7 +67,7 @@ impl Pack {
         Pack {
             name: "".to_string(),
             version_info: MVDescriptor {
-                mc_ver: "".to_string(),
+                mc_ver: MCVersion::new(),
                 version_types: vec![VT::RELEASE, VT::BETA, VT::ALPHA],
                 loader: LOADER::FABRIC,
             },

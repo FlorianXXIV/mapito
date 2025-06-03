@@ -16,14 +16,14 @@ use cli::{
     interactions::search_mods,
 };
 use config::{configure, Configuration};
-use mc_info::{LOADER, VT};
+use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
 use mrapi::{
     defines::Version,
     interactions::{get_project_version, print_project_info, search_package},
 };
 use pack::{
     create_pack,
-    pack::{MVDescriptor, Pack, PackAction},
+    pack::{Pack, PackAction},
     update_pack,
 };
 use reqwest::blocking::Client;
@@ -35,6 +35,7 @@ fn main() {
     let mut dl_id: String = String::new();
     let mut project_slug: String = String::new();
     let mut pack_action: Option<PackAction> = None;
+
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
@@ -128,7 +129,7 @@ fn main() {
 
     if !dl_id.is_empty() {
         let version_desc = MVDescriptor {
-            mc_ver: config.mc_ver.clone(),
+            mc_ver: MCVersion::from_str(&config.mc_ver).expect("from_str"),
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };
@@ -253,14 +254,14 @@ fn main() {
 
 fn pack_creation_loop(client: &Client, config: &Configuration) {
     let mut version_desc = MVDescriptor {
-        mc_ver: "".to_string(),
+        mc_ver: MCVersion::new(),
         version_types: vec![VT::RELEASE],
         loader: LOADER::FABRIC,
     };
     println!("Please enter the Name of the new Pack:");
     let name = read_line_to_string();
     println!("Please enter the Minecraft version you want the pack to have:");
-    version_desc.mc_ver = read_line_to_string();
+    version_desc.mc_ver = MCVersion::from_str(&read_line_to_string()).expect("from_str");
     println!(
         "Please select what loader you want to use:
         \n[0] - Fabric
@@ -337,7 +338,7 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
                     match read_line_to_string().as_str() {
                         "0" => {
                             println!("enter a new minecraft version for the Pack.");
-                            pack.version_info.mc_ver = read_line_to_string();
+                            pack.version_info.mc_ver = MCVersion::from_str(&read_line_to_string()).expect("from_str");
                         }
                         "1" => {
                             println!("enter new version types for the Pack.");
