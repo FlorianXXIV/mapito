@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    str::FromStr,
-};
+use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
 
@@ -174,10 +171,10 @@ impl FromStr for MCVersion {
 
         let mut is_snap = false;
         let mut patch = None;
-        let mut ident: Option<Vec<char>> = None;
+        let mut ident = None;
 
         let relreg =
-            Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}(?:-(?:rc|pre)[0-9]){0,1}$")
+            Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}(-(?:rc|pre)[0-9]){0,1}$")
                 .unwrap();
         let snareg = Regex::new(r"^([0-9]{2})w([0-9]{2})([a-z]+)$").unwrap();
         let caps = match relreg.captures(s) {
@@ -194,6 +191,10 @@ impl FromStr for MCVersion {
         if !is_snap {
             patch = match caps.get(3) {
                 Some(p) => Some(usize::from_str(p.as_str()).expect("patch from str")),
+                None => None,
+            };
+            ident = match caps.get(4) {
+                Some(i) => Some(i.as_str().chars().collect()),
                 None => None,
             };
         } else {
