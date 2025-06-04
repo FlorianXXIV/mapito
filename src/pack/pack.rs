@@ -1,5 +1,8 @@
 use std::{
-    fmt::Display, fs::{create_dir_all, remove_file, File}, io::{Read, Write}, str::FromStr
+    fmt::Display,
+    fs::{create_dir_all, remove_file, File},
+    io::{Read, Write},
+    str::FromStr,
 };
 
 use reqwest::blocking::Client;
@@ -7,10 +10,11 @@ use serde::{Deserialize, Serialize};
 use toml::Table;
 
 use crate::{
+    client::Downloader,
     config::Configuration,
-    mc_info::{LOADER, VT},
+    mc_info::{MCVersion, MVDescriptor, LOADER, VT},
     mrapi::interactions::{get_project_info, get_project_version},
-    pack::ModVersion,
+    pack::PackMod,
 };
 
 #[derive(Debug, Clone)]
@@ -51,13 +55,6 @@ impl FromStr for PackAction {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MVDescriptor {
-    pub mc_ver: String,
-    pub version_types: Vec<VT>,
-    pub loader: LOADER,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Pack {
     pub name: String,
     pub version_info: MVDescriptor,
@@ -70,7 +67,7 @@ impl Pack {
         Pack {
             name: "".to_string(),
             version_info: MVDescriptor {
-                mc_ver: "".to_string(),
+                mc_ver: MCVersion::new(),
                 version_types: vec![VT::RELEASE, VT::BETA, VT::ALPHA],
                 loader: LOADER::FABRIC,
             },
@@ -146,7 +143,7 @@ impl Pack {
         let project_version =
             get_project_version(client, staging, mod_slug.clone(), self.version_info.clone())
                 .expect("get_project_version");
-        let mod_version = ModVersion {
+        let mod_version = PackMod {
             name: project_version.name,
             verstion_type: project_version.version_type,
             version_number: project_version.version_number,
@@ -174,5 +171,31 @@ impl Pack {
                 self.add_mod(&dep_slug, client, staging);
             }
         }
+    }
+
+    pub fn install(&self, client: &Client, config: &Configuration) {
+        for (key, value) in &self.mods {
+            let mod_version: PackMod = value.clone().try_into().expect("try_into");
+            let dl_path = config.install_path.clone().unwrap() + "/" + &mod_version.file_name;
+            println!("Downloading '{key}' to '{dl_path}' ");
+            let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);
+        }
+    }
+}
+
+impl Display for Pack {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Name: {}, MC Version: {}, ReleaseTypes: {}, ModLoader: {}",
+            self.name,
+            self.version_info.mc_ver,
+            self.version_info
+                .version_types
+                .iter()
+                .map(|vt| vt.to_string() + " ")
+                .collect::<String>(),
+            self.version_info.loader.to_string()
+        )
     }
 }

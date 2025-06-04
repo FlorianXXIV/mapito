@@ -1,3 +1,5 @@
+use std::{fmt::Display, str::FromStr};
+
 use reqwest::blocking::Client;
 
 use crate::{
@@ -11,19 +13,62 @@ pub fn search_mods(client: &Client, config: &Configuration) -> Vec<String> {
     let mut mods: Vec<String> = Vec::new();
 
     loop {
-        println!("Please enter next query or enter 'q' to quit.");
-        let query = read_line_to_string();
-        if query == "q" {
-            break;
-        } else {
-            match query_reader(&query, client, config) {
-                Some(slug) => mods.push(slug),
-                None => println!("No mods Found"),
+        let query = match prompt_for::<String>("Please enter next query") {
+            Some(q) => q,
+            None => {
+                break;
             }
+        };
+        match query_reader(&query, client, config) {
+            Some(slug) => mods.push(slug),
+            None => println!("No mods Found"),
         }
     }
 
     mods
+}
+
+/// Prompt user for type T, if user eners 'q' returns None
+/// otherwise returns Some(T)
+pub fn prompt_for<T: FromStr>(prompt: &str) -> Option<T>
+where
+    T::Err: Display,
+{
+    loop {
+        println!("{} or press 'q' to quit:", prompt);
+        let result = read_line_to_string();
+        if result == "q" {
+            break;
+        }
+        let obj = match T::from_str(&result) {
+            Ok(obj) => obj,
+            Err(e) => {
+                println!("parsing input failed");
+                println!("{}", e);
+                continue;
+            }
+        };
+        return Some(obj);
+    }
+    None
+}
+
+/// Prompt the user for multiple objects of type T
+pub fn prompt_multiple<T: FromStr + Display>(prompt: &str) -> Vec<T>
+where
+    T::Err: Display,
+{
+    let mut ret: Vec<T> = Vec::new();
+    println!("Enter multiple");
+    loop {
+        match prompt_for::<T>(prompt) {
+            Some(obj) => ret.push(obj),
+            None => break,
+        };
+        println!("Currently selected {}", ret.iter().map(|obj| obj.to_string() + " ").collect::<String>());
+    }
+
+    ret
 }
 
 fn query_reader(query: &String, client: &Client, config: &Configuration) -> Option<String> {

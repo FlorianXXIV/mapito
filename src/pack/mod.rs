@@ -6,8 +6,8 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::{self};
 
-use crate::client::Downloader;
 use crate::mc_info::VT;
+use crate::util::error::ApiError;
 use crate::{
     config::Configuration,
     mrapi::
@@ -19,7 +19,7 @@ use crate::{
 pub mod pack;
 
 #[derive(Deserialize, Serialize, Debug)]
-struct ModVersion {
+struct PackMod {
     name: String,
     verstion_type: VT,
     version_number: String,
@@ -28,7 +28,7 @@ struct ModVersion {
     sha512: String,
 }
 
-impl PartialEq for ModVersion {
+impl PartialEq for PackMod {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
     }
@@ -71,22 +71,11 @@ pub fn create_pack(
     );
 }
 
-pub fn install_pack(client: &Client, name: String, config: &Configuration) {
-    let pack = Pack::open(&name, config);
-
-    for (key, value) in pack.mods {
-        let mod_version: ModVersion = value.try_into().expect("try_into");
-        let dl_path = config.install_path.clone().unwrap() + "/" + &mod_version.file_name;
-        println!("Downloading '{key}' to '{dl_path}' ");
-        let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);
-    }
-}
-
-pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), String> {
+pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), ApiError> {
     let mut pack = Pack::open(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
-        let mut mod_version: ModVersion = value.try_into().expect("try_into");
+        let mut mod_version: PackMod = value.try_into().expect("try_into");
         let project_version = get_project_version(
             client,
             config.staging,

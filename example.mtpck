@@ -1,0 +1,38 @@
+name = "example"
+
+[version_info]
+mc_ver = "1.21.5"
+version_types = ["RELEASE", "ALPHA", "BETA"]
+loader = "FABRIC"
+
+[mods.ferrite-core]
+file_name = "ferritecore-8.0.0-fabric.jar"
+file_url = "https://cdn.modrinth.com/data/uXXizFIs/versions/CtMpt7Jr/ferritecore-8.0.0-fabric.jar"
+name = "ferritecore-8.0.0-fabric"
+sha512 = "131b82d1d366f0966435bfcb38c362d604d68ecf30c106d31a6261bfc868ca3a82425bb3faebaa2e5ea17d8eed5c92843810eb2df4790f2f8b1e6c1bdc9b7745"
+version_number = "8.0.0-fabric"
+verstion_type = "RELEASE"
+
+[mods.iris]
+file_name = "iris-fabric-1.8.11+mc1.21.5.jar"
+file_url = "https://cdn.modrinth.com/data/YL57xq9U/versions/U6evbjd0/iris-fabric-1.8.11%2Bmc1.21.5.jar"
+name = "Iris 1.8.11 for Fabric 1.21.5"
+sha512 = "f87af0c7fbfa55657b0c0424dc8f20c9c507e4330a69faa83964b9c76f493be5cb19957937de6550ed220449c3c19cb41cbcfc163a12a72b581331d1d8f2958e"
+version_number = "1.8.11+1.21.5-fabric"
+verstion_type = "RELEASE"
+
+[mods.lithium]
+file_name = "lithium-fabric-0.16.2+mc1.21.5.jar"
+file_url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/VWYoZjBF/lithium-fabric-0.16.2%2Bmc1.21.5.jar"
+name = "Lithium 0.16.2 for Fabric"
+sha512 = "09a68051504bb16069dd6af8901f2bbeadfd08ad5353d8bcc0c4784e814fb293d9197b4fb0a8393be1f2db003cd987a9e4b98391bbe18c50ae181dace20c2fa4"
+version_number = "mc1.21.5-0.16.2-fabric"
+verstion_type = "RELEASE"
+
+[mods.sodium]
+file_name = "sodium-fabric-0.6.13+mc1.21.5.jar"
+file_url = "https://cdn.modrinth.com/data/AANobbMI/versions/DA250htH/sodium-fabric-0.6.13%2Bmc1.21.5.jar"
+name = "Sodium 0.6.13 for Fabric 1.21.5"
+sha512 = "4cddd0b8f5392278002e6cd4c91f20a9e4b17e7ba38c1a2dcc419ca4b0b856366e247101beedaff9f021664523ab32c51acf7fb4dd2b411367c06f9edeb2108d"
+version_number = "mc1.21.5-0.6.13-fabric"
+verstion_type = "BETA"

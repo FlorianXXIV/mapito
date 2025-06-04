@@ -7,7 +7,7 @@ use std::{
 };
 use toml::{self, Table};
 
-use crate::mc_info::{LOADER, VT};
+use crate::mc_info::{MCVersion, LOADER, VT};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -15,7 +15,7 @@ pub struct Configuration {
     pub loader: LOADER,
     pub download_path: String,
     pub pack_path: String,
-    pub mc_ver: String,
+    pub mc_ver: MCVersion,
     pub staging: usize,
     pub install_path: Option<String>,
 }
@@ -23,8 +23,12 @@ pub struct Configuration {
 pub fn configure() -> Result<Configuration, String> {
     let config: Configuration;
 
-    let config_path = env::var("HOME").unwrap() + "/.config/modrinth-apitool";
-    let mut config_fd = match File::open(config_path.clone() + "/config.toml") {
+    let config_dir = match env::home_dir() {
+        Some(path) => path.join(".config/modrinth-apitool/config.toml"),
+        None => return Err("Home Dir not Found".to_owned()),
+    };
+
+    let mut config_fd = match File::open(config_dir.as_path()) {
         Ok(v) => v,
         Err(e) => match e.kind() {
             ErrorKind::NotFound => create_config().expect("create_config"),
@@ -37,16 +41,22 @@ pub fn configure() -> Result<Configuration, String> {
 
     config = parse_config(body)?;
 
-    let mut config_fd = File::create(config_path + "/config.toml").expect("open");
+    let mut config_fd = File::create(config_dir.as_path()).expect("open");
 
     write!(&mut config_fd, "{}", toml::to_string(&config).unwrap()).expect("write config");
+
     Ok(config)
 }
 
 fn create_config() -> Result<File, std::io::Error> {
-    create_dir_all(env::var("HOME").unwrap() + "/.config/modrinth-apitool")?;
-    let mut config =
-        File::create(env::var("HOME").unwrap() + "/.config/modrinth-apitool/config.toml")?;
+    let config_dir = match env::home_dir() {
+        Some(path) => path.join(".config/modrinth-apitool"),
+        None => {
+            return Err(std::io::Error::last_os_error());
+        }
+    };
+    create_dir_all(config_dir.as_path())?;
+    let mut config = File::create(config_dir.join("config.toml"))?;
     let defaults = get_default_cfg();
     write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
 
@@ -79,10 +89,20 @@ fn parse_config(body: String) -> Result<Configuration, String> {
 fn get_default_cfg() -> Configuration {
     Configuration {
         release_type: VT::RELEASE,
-        download_path: env::var("HOME").unwrap() + "/Downloads",
-        pack_path: env::var("HOME").unwrap() + "/.config/modrinth-apitool/packs",
+        download_path: env::home_dir()
+            .unwrap()
+            .join("Downloads")
+            .to_str()
+            .unwrap()
+            .to_owned(),
+        pack_path: env::home_dir()
+            .unwrap()
+            .join(".config/modrinth-apitool/packs")
+            .to_str()
+            .unwrap()
+            .to_owned(),
         loader: LOADER::FABRIC,
-        mc_ver: "latest".to_string(),
+        mc_ver: MCVersion::latest(),
         staging: 0,
         install_path: None,
     }

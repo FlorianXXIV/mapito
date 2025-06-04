@@ -6,21 +6,22 @@ mod mrapi;
 mod pack;
 mod util;
 
-use std::str::FromStr;
-
 use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
-use cli::{input::{confirm_input, query_pack, read_line_to_string}, interactions::search_mods};
+use cli::{
+    input::{confirm_input, query_pack, read_line_to_string},
+    interactions::{prompt_for, prompt_multiple, search_mods},
+};
 use config::{configure, Configuration};
-use mc_info::{LOADER, VT};
+use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
 use mrapi::{
     defines::Version,
     interactions::{get_project_version, print_project_info, search_package},
 };
 use pack::{
-    create_pack, install_pack,
-    pack::{MVDescriptor, Pack, PackAction},
+    create_pack,
+    pack::{Pack, PackAction},
     update_pack,
 };
 use reqwest::blocking::Client;
@@ -32,6 +33,7 @@ fn main() {
     let mut dl_id: String = String::new();
     let mut project_slug: String = String::new();
     let mut pack_action: Option<PackAction> = None;
+
     //argument parser arg/opt setup
     {
         let mut parser = ArgumentParser::new();
@@ -125,23 +127,33 @@ fn main() {
 
     if !dl_id.is_empty() {
         let version_desc = MVDescriptor {
-            mc_ver: config.mc_ver.clone(),
+            mc_ver: config.mc_ver,
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };
         let dl_version: Version =
-            get_project_version(&client, config.staging, dl_id, version_desc.clone())
-                .expect("get_project_version");
+            match get_project_version(&client, config.staging, dl_id, version_desc.clone()) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("{}", e.to_string());
+                    return;
+                }
+            };
 
         let mut dependencies: Vec<Version> = Vec::new();
         for dependency in dl_version.dependencies {
-            let dep_ver = get_project_version(
+            let dep_ver = match get_project_version(
                 &client,
                 config.staging,
                 dependency.project_id,
                 version_desc.clone(),
-            )
-            .expect("get_project_version");
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("get_project_version: {}", e.to_string());
+                    continue;
+                }
+            };
             dependencies.push(dep_ver);
         }
 
@@ -224,9 +236,8 @@ fn main() {
         Some(PackAction::MODIFY) => pack_modification_loop(&client, &config),
         Some(PackAction::INSTALL) => {
             if config.install_path.is_some() {
-                println!("please enter name of pack");
-                let i_pack = read_line_to_string();
-                install_pack(&client, i_pack, &config);
+                let pack = query_pack(PackAction::INSTALL, &config);
+                pack.install(&client, &config);
             } else {
                 eprintln!("No install path given")
             }
@@ -241,37 +252,30 @@ fn main() {
 
 fn pack_creation_loop(client: &Client, config: &Configuration) {
     let mut version_desc = MVDescriptor {
-        mc_ver: "".to_string(),
+        mc_ver: MCVersion::new(),
         version_types: vec![VT::RELEASE],
         loader: LOADER::FABRIC,
     };
+
+    let abort_msg = "Aborting pack creation.";
+
     println!("Please enter the Name of the new Pack:");
     let name = read_line_to_string();
-    println!("Please enter the Minecraft version you want the pack to have:");
-    version_desc.mc_ver = read_line_to_string();
-    println!(
-        "Please select what loader you want to use:
-        \n[0] - Fabric
-        \n[1] - Quilt
-        \n[2] - NeoForge
-        \n[3] - Forge"
-    );
-    match read_line_to_string().as_str() {
-        "0" | "[0]" => version_desc.loader = LOADER::FABRIC,
-        "1" | "[1]" => version_desc.loader = LOADER::QUILT,
-        "2" | "[2]" => version_desc.loader = LOADER::NEOFORGE,
-        "3" | "[3]" => version_desc.loader = LOADER::FORGE,
-        _ => panic!("invalid input"),
-    }
-    println!(
-        "Please type in a list of version types you want to allow:
-        \nExample: 'release beta'
-        \nAllowed types: 'release' 'beta' 'alpha'"
-    );
-    version_desc.version_types = read_line_to_string()
-        .split_whitespace()
-        .map(|vt| VT::from_str(vt).expect("from_str"))
-        .collect();
+    version_desc.mc_ver = match prompt_for("Please enter the Minecraft version of this pack") {
+        Some(ver) => ver,
+        None => {
+            println!("{}", abort_msg);
+            return;
+        }
+    };
+    version_desc.loader = match prompt_for("Please enter what loader you want to use") {
+        Some(loader) => loader,
+        None => {
+            println!("{}", abort_msg);
+            return;
+        }
+    };
+    version_desc.version_types = prompt_multiple("Please enter one of 'release' 'beta' 'alpha'");
     println!("Please confirm your input:\n Pack Name: {name}\n Minecraft version: {}\n Mod Loader: {}\n version types: {}",
         version_desc.mc_ver,
         version_desc.loader.to_string(),
@@ -285,49 +289,25 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     );
     let mods: Vec<String> = search_mods(client, config);
 
-    create_pack(
-        &client,
-        config.staging,
-        name,
-        version_desc,
-        &mods,
-        &config,
-    );
+    create_pack(&client, config.staging, name, version_desc, &mods, &config);
     return;
 }
 
 fn pack_modification_loop(client: &Client, config: &Configuration) {
     let mut pack = query_pack(PackAction::MODIFY, config);
     loop {
-        println!(
-            "choose category to modify:
-    0 - Name: {}
-    1 - Version Info
-            Minecraft Version: {}
-            Version Types: {}
-            Loader: {}
-    2 - ModsT
-enter 'q' to quit.",
-            pack.name,
-            pack.version_info.mc_ver,
-            pack.version_info
-                .version_types
-                .iter()
-                .map(|vt| vt.to_string() + " ")
-                .collect::<String>(),
-            pack.version_info.loader.to_string()
-        );
-        let result = read_line_to_string();
-        match result.as_str() {
-            "0" => {
+        println!("{}", pack.to_string(),);
+        match prompt_for::<char>("choose a category to modify:\n0 - Name\n1 - Version Info\n\tMinecraft Version\n\tVersion Types\n\tLoader\n2 - Mods\n") {
+            Some('0') => {
                 pack.remove(config);
-                println!("enter a new name for the Pack.");
-                let new_name = read_line_to_string();
-                pack.name = new_name;
+                match prompt_for::<String>("Enter a new name for the Pack.") {
+                    Some(name) => pack.name = name,
+                    None => println!("Name not changed."),
+                };
                 pack.save(config);
                 return;
             }
-            "1" => {
+            Some('1') => {
                 let true_name = pack.name.clone();
                 pack.name = pack.name + "_tmp";
                 loop {
@@ -342,25 +322,26 @@ enter 'q' to quit.",
                             .collect::<String>()
                     );
                     println!("  2 - Loader: {}", pack.version_info.loader.to_string());
-                    println!("enter 'q' to quit.");
-                    match read_line_to_string().as_str() {
-                        "0" => {
-                            println!("enter a new minecraft version for the Pack.");
-                            pack.version_info.mc_ver = read_line_to_string();
+                    match prompt_for::<char>("") {
+                        Some('0') => {
+                            match prompt_for::<MCVersion>("enter a new Minecraft version for the Pack.") {
+                                Some(ver) => {pack.version_info.mc_ver = ver},
+                                None => {
+                                    println!("Version not changed.");
+                                },
+                            };
                         }
-                        "1" => {
+                        Some('1') => {
                             println!("enter new version types for the Pack.");
-                            pack.version_info.version_types = read_line_to_string()
-                                .split_whitespace()
-                                .map(|vt| VT::from_str(vt).expect("from_str"))
-                                .collect();
+                            pack.version_info.version_types = prompt_multiple("Enter new version types for the Pack.");
                         }
-                        "2" => {
-                            println!("Please enter the loader you want to change to.");
-                            pack.version_info.loader =
-                                LOADER::from_str(&read_line_to_string()).expect("from_str");
+                        Some('2') => {
+                            match prompt_for::<LOADER>("Please enter the loader you want to change to") {
+                                Some(loader) => pack.version_info.loader = loader,
+                                None => println!("Loader not changed."),
+                            };
                         }
-                        "q" => break,
+                        None => break,
                         _ => println!("unexpected input"),
                     }
                 }
@@ -380,31 +361,30 @@ enter 'q' to quit.",
                 };
                 pack = Pack::open(&pack.name, config);
             }
-            "2" => loop {
+            Some('2') => loop {
                 pack.list_mods();
                 println!("Choose an Action:");
                 println!("  0 - add mods");
                 println!("  1 - remove a mod");
-                println!("enter 'q' to quit");
-                match read_line_to_string().as_str() {
-                    "0" => {
+                match prompt_for::<char>("") {
+                    Some('0') => {
                         let mods = search_mods(client, config);
                         for item in mods {
                             pack.add_mod(&item, client, config.staging);
                         }
                         pack.save(config);
-                    },
-                    "1" => {
+                    }
+                    Some('1') => {
                         println!("Enter which mod to remove:");
                         pack.mods.remove(&read_line_to_string());
                         pack.save(config);
                         pack = Pack::open(&pack.name, config);
                     }
-                    "q" => break,
+                    None => break,
                     _ => println!("unexpected input"),
                 }
             },
-            "q" => return,
+            None => return,
             _ => println!("unexpected input"),
         }
     }
