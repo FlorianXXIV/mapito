@@ -13,7 +13,7 @@ use crate::client::Downloader;
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
 use cli::{
     input::{confirm_input, query_pack, read_line_to_string},
-    interactions::search_mods,
+    interactions::{prompt_for, search_mods},
 };
 use config::{configure, Configuration};
 use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
@@ -258,24 +258,25 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
         version_types: vec![VT::RELEASE],
         loader: LOADER::FABRIC,
     };
+
+    let abort_msg = "Aborting pack creation.";
+
     println!("Please enter the Name of the new Pack:");
     let name = read_line_to_string();
-    println!("Please enter the Minecraft version you want the pack to have:");
-    version_desc.mc_ver = MCVersion::from_str(&read_line_to_string()).expect("from_str");
-    println!(
-        "Please select what loader you want to use:
-        \n[0] - Fabric
-        \n[1] - Quilt
-        \n[2] - NeoForge
-        \n[3] - Forge"
-    );
-    match read_line_to_string().as_str() {
-        "0" | "[0]" => version_desc.loader = LOADER::FABRIC,
-        "1" | "[1]" => version_desc.loader = LOADER::QUILT,
-        "2" | "[2]" => version_desc.loader = LOADER::NEOFORGE,
-        "3" | "[3]" => version_desc.loader = LOADER::FORGE,
-        _ => panic!("invalid input"),
-    }
+    version_desc.mc_ver = match prompt_for::<MCVersion>("Please enter the Minecraft version of this pack") {
+        Some(ver) => ver,
+        None => {
+            println!("{}", abort_msg);
+            return;
+        }
+    };
+    version_desc.loader = match prompt_for::<LOADER>("Please enter what loader you want to use") {
+        Some(loader) => loader,
+        None => {
+            println!("{}", abort_msg);
+            return;
+        }
+    };
     println!(
         "Please type in a list of version types you want to allow:
         \nExample: 'release beta'
@@ -313,9 +314,10 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
         match result.as_str() {
             "0" => {
                 pack.remove(config);
-                println!("enter a new name for the Pack.");
-                let new_name = read_line_to_string();
-                pack.name = new_name;
+                match prompt_for::<String>("Enter a new name for the Pack.") {
+                    Some(name) => pack.name = name,
+                    None => println!("Name not changed."),
+                };
                 pack.save(config);
                 return;
             }
@@ -337,8 +339,12 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
                     println!("enter 'q' to quit.");
                     match read_line_to_string().as_str() {
                         "0" => {
-                            println!("enter a new minecraft version for the Pack.");
-                            pack.version_info.mc_ver = MCVersion::from_str(&read_line_to_string()).expect("from_str");
+                            match prompt_for::<MCVersion>("enter a new Minecraft version for the Pack.") {
+                                Some(ver) => {pack.version_info.mc_ver = ver},
+                                None => {
+                                    println!("Version not changed.");
+                                },
+                            };
                         }
                         "1" => {
                             println!("enter new version types for the Pack.");
@@ -348,9 +354,10 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
                                 .collect();
                         }
                         "2" => {
-                            println!("Please enter the loader you want to change to.");
-                            pack.version_info.loader =
-                                LOADER::from_str(&read_line_to_string()).expect("from_str");
+                            match prompt_for::<LOADER>("Please enter the loader you want to change to") {
+                                Some(loader) => pack.version_info.loader = loader,
+                                None => println!("Loader not changed."),
+                            };
                         }
                         "q" => break,
                         _ => println!("unexpected input"),
