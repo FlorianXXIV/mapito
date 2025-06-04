@@ -278,6 +278,10 @@ impl PartialOrd for MCVersion {
         }
         if !self.snapshot {
             match self.patch.partial_cmp(&other.patch) {
+                Some(core::cmp::Ordering::Equal) => {}
+                ord => return ord,
+            }
+            match self.ident.iter().partial_cmp(&other.ident) {
                 ord => return ord,
             }
         } else {
