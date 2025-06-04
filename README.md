@@ -27,4 +27,4 @@ Here is an Example to look at.
 ## Planned
 Planned improvements are documented under issues, they are tagged with enhancment
 ## Install
-To install run `cargo install modrinth-apitool`
+To install run `cargo install mapito`
