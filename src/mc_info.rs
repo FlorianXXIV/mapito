@@ -162,7 +162,7 @@ impl FromStr for MCVersion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "latest" {
-            return Ok(MCVersion::new());
+            return Ok(MCVersion::latest());
         }
 
         let mut is_snap = false;
@@ -208,32 +208,33 @@ impl FromStr for MCVersion {
 }
 
 impl MCVersion {
-    /// return a new MCVersion, it will be set to latest
+    /// return a new MCVersion
     pub fn new() -> Self {
         MCVersion {
             major: 0,
             minor: 0,
-            patch: Some(0),
+            patch: None,
             ident: None,
-            latest: true,
+            latest: false,
             snapshot: false,
         }
     }
-
-    /// returns true if other version is considered compatible
-    /// versions are considered compatible if they do not
-    /// specify a patch version but are otherwise the same.
-    pub fn is_compat(&self, other: &Self) -> bool {
-        if self == other {
-            return true;
+    
+    /// return version set to latest
+    pub fn latest() -> Self {
+        MCVersion {
+            major: 0,
+            minor: 0,
+            patch: None,
+            ident: None,
+            latest: true,
+            snapshot: false
         }
-        if self.snapshot {
-            return false;
-        }
-        if other.patch.is_none() {
-            return !self.latest && self.major == other.major && self.minor == other.minor;
-        }
-        false
+    }
+    
+    /// true if the version is set to latest
+    pub fn is_latest(&self) -> bool {
+        self.latest
     }
 }
 

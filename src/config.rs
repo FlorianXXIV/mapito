@@ -102,7 +102,7 @@ fn get_default_cfg() -> Configuration {
             .unwrap()
             .to_owned(),
         loader: LOADER::FABRIC,
-        mc_ver: MCVersion::from_str("latest").expect("from_str"),
+        mc_ver: MCVersion::latest(),
         staging: 0,
         install_path: None,
     }
