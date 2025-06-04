@@ -4,6 +4,8 @@ use regex::Regex;
 
 use serde::{Deserialize, Serialize};
 
+use crate::mrapi::defines::Version;
+
 #[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum VT {
     RELEASE,
@@ -98,6 +100,23 @@ pub struct MVDescriptor {
     pub version_types: Vec<VT>,
     pub loader: LOADER,
 }
+
+impl PartialEq for MVDescriptor {
+    fn eq(&self, other: &Self) -> bool {
+        self.mc_ver == other.mc_ver
+            && self.version_types == other.version_types
+            && self.loader == other.loader
+    }
+}
+
+impl MVDescriptor {
+    pub fn check_version_compat(&self, version: &Version) -> bool {
+        version.game_versions.contains(&self.mc_ver)
+            && version.loaders.contains(&self.loader)
+            && self.version_types.contains(&version.version_type)
+    }
+}
+
 /// This represents any Given minecraft version.
 ///
 /// if snapshot is false, then the version will be represented as normal ("1.20.1")
@@ -176,7 +195,7 @@ impl FromStr for MCVersion {
         let relreg =
             Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}(-(?:rc|pre)[0-9]){0,1}$")
                 .unwrap();
-        let snareg = Regex::new(r"^([0-9]{2})w([0-9]{2})([a-z]+)$").unwrap();
+        let snareg = Regex::new(r"^([0-9]{2})w([0-9]{2})(\D+)$").unwrap();
         let caps = match relreg.captures(s) {
             Some(caps) => caps,
             None => match snareg.captures(s) {
@@ -184,7 +203,7 @@ impl FromStr for MCVersion {
                     is_snap = true;
                     caps
                 }
-                None => return Err("Invalid version Format".to_owned()),
+                None => return Err("Invalid version Format ".to_owned() + s),
             },
         };
 
@@ -244,6 +263,10 @@ impl MCVersion {
     pub fn is_latest(&self) -> bool {
         self.latest
     }
+    
+    pub fn is_snapshot(&self) -> bool {
+        self.snapshot
+    }
 }
 
 /// MCVersion is equal if x1.y1.z1 == x2.y2.z2 or if both have latest set to true
@@ -281,8 +304,20 @@ impl PartialOrd for MCVersion {
                 Some(core::cmp::Ordering::Equal) => {}
                 ord => return ord,
             }
-            match self.ident.iter().partial_cmp(&other.ident) {
-                ord => return ord,
+            if self.ident == other.ident {
+                return Some(std::cmp::Ordering::Equal);
+            } else if self.ident.is_none() {
+                if other.ident.is_some() {
+                return Some(std::cmp::Ordering::Greater);
+                } else {
+                    return None;
+                }
+            } else {
+                if other.ident.is_none() {
+                    return Some(std::cmp::Ordering::Less);
+                } else {
+                    return None;
+                }
             }
         } else {
             match self.ident.iter().partial_cmp(&other.ident) {

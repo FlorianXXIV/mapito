@@ -138,7 +138,7 @@ impl Pack {
     }
 
     /// adds a mod and its dependencies
-    pub fn add_mod(&mut self, mod_slug: &String, client: &Client, staging: usize) {
+    pub fn add_mod(&mut self, mod_slug: &String, client: &Client, staging: usize) -> Vec<MCVersion> {
         println!("Looking for {mod_slug}");
         let project_version =
             get_project_version(client, staging, mod_slug.clone(), self.version_info.clone())
@@ -171,6 +171,7 @@ impl Pack {
                 self.add_mod(&dep_slug, client, staging);
             }
         }
+        project_version.game_versions
     }
 
     pub fn install(&self, client: &Client, config: &Configuration) {

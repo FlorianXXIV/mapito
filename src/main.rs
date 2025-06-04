@@ -6,6 +6,8 @@ mod mrapi;
 mod pack;
 mod util;
 
+use std::{fmt::Debug, str::FromStr};
+
 use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
@@ -287,9 +289,9 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     println!(
         "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
     );
-    let mods: Vec<String> = search_mods(client, config);
+    let mut mods: Vec<String> = search_mods(client, config);
 
-    create_pack(&client, config.staging, name, version_desc, &mods, &config);
+    create_pack(&client, config.staging, name, version_desc, &mut mods, &config);
     return;
 }
 
