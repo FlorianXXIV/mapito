@@ -1,4 +1,7 @@
-use std::{fmt::Display, str::FromStr};
+use std::{
+    fmt::Display,
+    str::FromStr,
+};
 
 use regex::Regex;
 
@@ -11,15 +14,18 @@ pub enum VT {
     ALPHA,
 }
 
-impl VT {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::RELEASE => String::from_str("release").expect("from_str"),
-            Self::BETA => String::from_str("beta").expect("from_str"),
-            Self::ALPHA => String::from_str("alpha").expect("from_str"),
-        }
+impl Display for VT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let to_write = match self {
+            Self::RELEASE => "release",
+            Self::BETA => "beta",
+            Self::ALPHA => "alpha",
+        };
+
+        write!(f, "{}", to_write)
     }
 }
+
 impl<'de> Deserialize<'de> for VT {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -64,14 +70,15 @@ impl<'de> Deserialize<'de> for LOADER {
     }
 }
 
-impl LOADER {
-    pub fn to_string(&self) -> String {
-        match self {
-            Self::FABRIC => "fabric".to_string(),
-            Self::QUILT => "quilt".to_string(),
-            Self::NEOFORGE => "neoforge".to_string(),
-            Self::FORGE => "forge".to_string(),
-        }
+impl Display for LOADER {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let to_write = match self {
+            Self::FABRIC => "fabric",
+            Self::QUILT => "quilt",
+            Self::NEOFORGE => "neoforge",
+            Self::FORGE => "forge",
+        };
+        write!(f, "{}", to_write)
     }
 }
 
@@ -219,7 +226,7 @@ impl MCVersion {
             snapshot: false,
         }
     }
-    
+
     /// return version set to latest
     pub fn latest() -> Self {
         MCVersion {
@@ -228,10 +235,10 @@ impl MCVersion {
             patch: None,
             ident: None,
             latest: true,
-            snapshot: false
+            snapshot: false,
         }
     }
-    
+
     /// true if the version is set to latest
     pub fn is_latest(&self) -> bool {
         self.latest

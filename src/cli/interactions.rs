@@ -53,6 +53,24 @@ where
     None
 }
 
+/// Prompt the user for multiple objects of type T
+pub fn prompt_multiple<T: FromStr + Display>(prompt: &str) -> Vec<T>
+where
+    T::Err: Display,
+{
+    let mut ret: Vec<T> = Vec::new();
+    println!("Enter multiple");
+    loop {
+        match prompt_for::<T>(prompt) {
+            Some(obj) => ret.push(obj),
+            None => break,
+        };
+        println!("Currently selected {}", ret.iter().map(|obj| obj.to_string() + " ").collect::<String>());
+    }
+
+    ret
+}
+
 fn query_reader(query: &String, client: &Client, config: &Configuration) -> Option<String> {
     let mut offset = 0;
     loop {
