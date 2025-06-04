@@ -193,7 +193,7 @@ impl FromStr for MCVersion {
         let mut ident = None;
 
         let relreg =
-            Regex::new(r"^([0-9]).([0-9]{1,2})(?:.([0-9]{1,2})){0,1}(-(?:rc|pre)[0-9]){0,1}$")
+            Regex::new(r"^([0-9])\.([0-9]{1,2})(?:\.([0-9]{1,2})){0,1}(-(?:rc|pre)[0-9]){0,1}$")
                 .unwrap();
         let snareg = Regex::new(r"^([0-9]{2})w([0-9]{2})(\D+)$").unwrap();
         let caps = match relreg.captures(s) {
