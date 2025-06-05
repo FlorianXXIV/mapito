@@ -6,8 +6,6 @@ mod mrapi;
 mod pack;
 mod util;
 
-use std::{fmt::Debug, str::FromStr};
-
 use crate::client::Downloader;
 
 use argparse::{ArgumentParser, Store, StoreConst, StoreOption};

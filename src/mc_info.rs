@@ -190,7 +190,6 @@ impl FromStr for MCVersion {
 
         let mut is_snap = false;
         let mut patch = None;
-        let mut ident = None;
 
         let relreg =
             Regex::new(r"^([0-9])\.([0-9]{1,2})(?:\.([0-9]{1,2})){0,1}(-(?:rc|pre)[0-9]){0,1}$")
@@ -207,21 +206,21 @@ impl FromStr for MCVersion {
             },
         };
 
-        if !is_snap {
+        let ident = if !is_snap {
             patch = match caps.get(3) {
                 Some(p) => Some(usize::from_str(p.as_str()).expect("patch from str")),
                 None => None,
             };
-            ident = match caps.get(4) {
-                Some(i) => Some(i.as_str().chars().collect()),
-                None => None,
-            };
-        } else {
-            ident = match caps.get(3) {
+            match caps.get(4) {
                 Some(i) => Some(i.as_str().chars().collect()),
                 None => None,
             }
-        }
+        } else {
+            match caps.get(3) {
+                Some(i) => Some(i.as_str().chars().collect()),
+                None => None,
+            }
+        };
 
         Ok(MCVersion {
             major: usize::from_str(caps.get(1).unwrap().as_str()).expect("major from str"),

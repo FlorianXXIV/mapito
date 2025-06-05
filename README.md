@@ -3,7 +3,7 @@
 [![license badge](https://img.shields.io/github/license/FlorianXXIV/modrinth-apitool
 )](https://github.com/FlorianXXIV/modrinth-apitool/blob/main/LICENSE)
 
-Mapito (M)odrinth-(api)(to)ol is a Command line application that lets you search
+Mapito M(odrinth-)apito(ol) is a Command line application that lets you search
 the Modrinth Mod database to download mods or even define your own Modpack.
 ## Features
 - Search modrinth for projects
