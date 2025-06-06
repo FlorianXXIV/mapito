@@ -1,6 +1,6 @@
 [package]
 name = "mapito"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 authors = ["FlorianXXIV"]
 description = "A command line interface for interacting with the modrinth api to manage you minecraft mods more easily."
