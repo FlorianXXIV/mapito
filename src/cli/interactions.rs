@@ -96,7 +96,13 @@ fn query_reader(query: &String, client: &Client, config: &Configuration) -> Opti
                         break;
                     }
                     _ => {
-                        let i: usize = resp.parse().expect("parse");
+                        let i: usize = match resp.parse() {
+                            Ok(u) => {u},
+                            Err(e) => {
+                                println!("{}", e);
+                                continue;
+                            },
+                        };
                         return Some(sl[i].clone());
                     }
                 }
