@@ -45,9 +45,12 @@ pub fn create_pack(
     let mut pack = Pack::new();
     pack.name = name;
     pack.version_info = version_desc.clone();
+    
 
     for mc_mod in mods {
-        pack.add_mod(mc_mod, client, staging);
+        if !pack.add_mod(mc_mod, client, staging).contains(&pack.version_info.mc_ver) {
+            panic!("added incompatible mod version");
+        }
     }
 
     create_dir_all(config.pack_path.clone()).expect("create_dir_all");

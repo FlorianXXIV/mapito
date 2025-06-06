@@ -150,13 +150,15 @@ pub fn get_project_version(
             return Err(ApiError::invalid_data());
         },
     };
-    for version in versions {
-        if (version.game_versions.iter().any(|gv| version_desc.mc_ver == *gv) || version_desc.mc_ver.is_latest())
-            && version_desc.version_types.contains(&version.version_type)
-            && version.loaders.contains(&version_desc.loader)
-        {
-            project_version = Some(version.clone());
-            break;
+    if version_desc.mc_ver.is_latest() {
+        project_version = Some(versions[0].clone());
+    } else {
+        for version in versions {
+            if version_desc.check_version_compat(&version)
+            {
+                project_version = Some(version.clone());
+                break;
+            }
         }
     }
 
