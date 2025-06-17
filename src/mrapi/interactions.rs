@@ -15,7 +15,7 @@ pub fn search_package(
     staging: usize,
     limit: Option<usize>,
     offset: Option<usize>,
-    facets: Option<Vec<Vec<(String, String)>>>,
+    facets: &Option<Vec<Vec<(String, String)>>>,
 ) -> Option<Vec<String>> {
     let par_limit = match limit {
         Some(num) => num.to_string(),
@@ -30,7 +30,7 @@ pub fn search_package(
     let query = match facets {
         Some(facets) => {
             let mut str_facet:String = "[".to_string();
-            for and in &facets {
+            for and in facets {
                 str_facet += "[";
                 for or in and {
                     str_facet += "\"";

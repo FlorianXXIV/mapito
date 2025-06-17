@@ -127,7 +127,7 @@ fn main() {
             config.staging,
             None,
             None,
-            Some(vec![
+            &Some(vec![
                 vec![("versions".to_string(), config.mc_ver.to_string())],
                 vec![("categories".to_string(), config.loader.to_string())],
             ]),
@@ -297,7 +297,7 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     println!(
         "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
     );
-    let mut mods: Vec<String> = search_mods(client, config);
+    let mut mods: Vec<String> = search_mods(client, config, Some(&version_desc));
 
     create_pack(
         &client,
@@ -385,7 +385,7 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
                 println!("  1 - remove a mod");
                 match prompt_for::<char>("") {
                     Some('0') => {
-                        let mods = search_mods(client, config);
+                        let mods = search_mods(client, config, Some(&pack.version_info));
                         for item in mods {
                             pack.add_mod(&item, client, config.staging);
                         }
