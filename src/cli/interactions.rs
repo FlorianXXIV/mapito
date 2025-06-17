@@ -3,11 +3,16 @@ use std::{fmt::Display, str::FromStr};
 use reqwest::blocking::Client;
 
 use crate::{
-    cli::input::read_line_to_string, config::Configuration, mrapi::interactions::search_package,
+    cli::input::read_line_to_string, config::Configuration, mc_info::MVDescriptor,
+    mrapi::interactions::search_package,
 };
 
 /// repeats prompt to search for mods and returns a vector of the slugs of all chosen mods
-pub fn search_mods(client: &Client, config: &Configuration) -> Vec<String> {
+pub fn search_mods(
+    client: &Client,
+    config: &Configuration,
+    version_desc: Option<&MVDescriptor>,
+) -> Vec<String> {
     println!("Search for mods and add them to the pack.");
 
     let mut mods: Vec<String> = Vec::new();
@@ -19,7 +24,7 @@ pub fn search_mods(client: &Client, config: &Configuration) -> Vec<String> {
                 break;
             }
         };
-        match query_reader(&query, client, config) {
+        match query_reader(&query, client, config, version_desc) {
             Some(slug) => mods.push(slug),
             None => println!("No mods Found"),
         }
@@ -65,16 +70,41 @@ where
             Some(obj) => ret.push(obj),
             None => break,
         };
-        println!("Currently selected {}", ret.iter().map(|obj| obj.to_string() + " ").collect::<String>());
+        println!(
+            "Currently selected {}",
+            ret.iter()
+                .map(|obj| obj.to_string() + " ")
+                .collect::<String>()
+        );
     }
 
     ret
 }
 
-fn query_reader(query: &String, client: &Client, config: &Configuration) -> Option<String> {
+fn query_reader(
+    query: &String,
+    client: &Client,
+    config: &Configuration,
+    version_desc: Option<&MVDescriptor>,
+) -> Option<String> {
     let mut offset = 0;
+    let facets = match version_desc {
+        Some(vd) => Some(vec![
+            vec![("versions".to_string(), vd.mc_ver.to_string())],
+            vec![("categories".to_string(), vd.loader.to_string())],
+        ]),
+
+        None => None,
+    };
     loop {
-        let slugs = search_package(client, query, config.staging, None, Some(offset));
+        let slugs = search_package(
+            client,
+            query,
+            config.staging,
+            None,
+            Some(offset),
+            &facets,
+        );
         match slugs {
             Some(sl) => {
                 println!(
@@ -97,11 +127,11 @@ fn query_reader(query: &String, client: &Client, config: &Configuration) -> Opti
                     }
                     _ => {
                         let i: usize = match resp.parse() {
-                            Ok(u) => {u},
+                            Ok(u) => u,
                             Err(e) => {
                                 println!("{}", e);
                                 continue;
-                            },
+                            }
                         };
                         return Some(sl[i].clone());
                     }
