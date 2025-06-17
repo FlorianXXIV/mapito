@@ -121,7 +121,17 @@ fn main() {
     let client = Client::new();
 
     if !search.is_empty() {
-        search_package(&client, &search, config.staging, None, None);
+        search_package(
+            &client,
+            &search,
+            config.staging,
+            None,
+            None,
+            Some(vec![
+                vec![("versions".to_string(), config.mc_ver.to_string())],
+                vec![("categories".to_string(), config.loader.to_string())],
+            ]),
+        );
         return;
     }
 
@@ -289,7 +299,14 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     );
     let mut mods: Vec<String> = search_mods(client, config);
 
-    create_pack(&client, config.staging, name, version_desc, &mut mods, &config);
+    create_pack(
+        &client,
+        config.staging,
+        name,
+        version_desc,
+        &mut mods,
+        &config,
+    );
     return;
 }
 

@@ -11,3 +11,4 @@ pub const MEMBERS: &str = "/members";
 pub const QUERY: &str = "query";
 pub const OFFSET: &str = "offset";
 pub const LIMIT: &str = "limit";
+pub const FACETS: &str = "facets";

@@ -1,30 +1,67 @@
 use colored::Colorize;
 use reqwest::{blocking::Client, Url};
-use serde_json::{Value};
+use serde_json::Value;
 
 use crate::{util::error::ApiError, MVDescriptor};
 
 use super::{
-    constants::{API_URL, LIMIT, MEMBERS, OFFSET, PROJECT, QUERY, SEARCH, VERSION},
+    constants::{API_URL, FACETS, LIMIT, MEMBERS, OFFSET, PROJECT, QUERY, SEARCH, VERSION},
     defines::{Member, Project, SearchResp, Version},
 };
 
-pub fn search_package(client: &Client, query: &String, staging: usize, limit: Option<usize>, offset: Option<usize>) -> Option<Vec<String>> {
+pub fn search_package(
+    client: &Client,
+    query: &String,
+    staging: usize,
+    limit: Option<usize>,
+    offset: Option<usize>,
+    facets: Option<Vec<Vec<(String, String)>>>,
+) -> Option<Vec<String>> {
     let par_limit = match limit {
-        Some(num) => {num.to_string()},
-        None => {"10".to_owned()},
-    };
-    
-    let par_offset = match offset {
-        Some(num) => {num.to_string()},
-        None => {"0".to_owned()},
+        Some(num) => num.to_string(),
+        None => "10".to_owned(),
     };
 
-    let query = Url::parse_with_params(
-        (API_URL[staging].to_owned() + SEARCH).as_str(),
-        &[(QUERY, query), (LIMIT, &par_limit), (OFFSET, &par_offset)],
-    )
-    .unwrap();
+    let par_offset = match offset {
+        Some(num) => num.to_string(),
+        None => "0".to_owned(),
+    };
+
+    let query = match facets {
+        Some(facets) => {
+            let mut str_facet:String = "[".to_string();
+            for and in &facets {
+                str_facet += "[";
+                for or in and {
+                    str_facet += "\"";
+                    str_facet += or.0.as_str();
+                    str_facet += ":";
+                    str_facet += or.1.as_str();
+                    str_facet += "\"";
+                    if !(or == and.last().unwrap()) {
+                        str_facet += ",";
+                    }
+                }
+                str_facet += "]";
+                if !(and == facets.last().unwrap()) {
+                    str_facet += ",";
+                }
+            }
+            str_facet += "]";
+            Url::parse_with_params(
+                (API_URL[staging].to_owned() + SEARCH).as_str(),
+                &[(QUERY, query), (LIMIT, &par_limit), (OFFSET, &par_offset), (FACETS, &str_facet)],
+            )
+            .unwrap()
+        }
+        None => {
+            Url::parse_with_params(
+                (API_URL[staging].to_owned() + SEARCH).as_str(),
+                &[(QUERY, query), (LIMIT, &par_limit), (OFFSET, &par_offset)],
+            )
+            .unwrap()
+        }
+    };
     let query_response = match client.get(query).send().unwrap().json::<SearchResp>() {
         Ok(v) => v,
         Err(_) => {
@@ -132,30 +169,29 @@ pub fn get_project_version(
 ) -> Result<Version, ApiError> {
     let mut project_version: Option<Version> = None;
     let versions: Vec<Version> = match serde_json::from_value(
-            match request_api(
-                            client,
-                            staging,
-                            &(PROJECT.to_owned() + "/" + &project_slug + VERSION),
-                        ) {
-                Ok(v) => {v},
-                Err(e) => {
-                    println!("{}", e.to_string());
-                    return Err(ApiError::not_found());
-                },
-            },
+        match request_api(
+            client,
+            staging,
+            &(PROJECT.to_owned() + "/" + &project_slug + VERSION),
         ) {
-        Ok(v) => {v},
+            Ok(v) => v,
+            Err(e) => {
+                println!("{}", e.to_string());
+                return Err(ApiError::not_found());
+            }
+        },
+    ) {
+        Ok(v) => v,
         Err(e) => {
             println!("{}", e.to_string());
             return Err(ApiError::invalid_data());
-        },
+        }
     };
     if version_desc.mc_ver.is_latest() {
         project_version = Some(versions[0].clone());
     } else {
         for version in versions {
-            if version_desc.check_version_compat(&version)
-            {
+            if version_desc.check_version_compat(&version) {
                 project_version = Some(version.clone());
                 break;
             }

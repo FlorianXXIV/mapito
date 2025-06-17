@@ -65,7 +65,12 @@ where
             Some(obj) => ret.push(obj),
             None => break,
         };
-        println!("Currently selected {}", ret.iter().map(|obj| obj.to_string() + " ").collect::<String>());
+        println!(
+            "Currently selected {}",
+            ret.iter()
+                .map(|obj| obj.to_string() + " ")
+                .collect::<String>()
+        );
     }
 
     ret
@@ -74,7 +79,17 @@ where
 fn query_reader(query: &String, client: &Client, config: &Configuration) -> Option<String> {
     let mut offset = 0;
     loop {
-        let slugs = search_package(client, query, config.staging, None, Some(offset));
+        let slugs = search_package(
+            client,
+            query,
+            config.staging,
+            None,
+            Some(offset),
+            Some(vec![
+                vec![("versions".to_string(), config.mc_ver.to_string())],
+                vec![("categories".to_string(), config.loader.to_string())],
+            ]),
+        );
         match slugs {
             Some(sl) => {
                 println!(
@@ -97,11 +112,11 @@ fn query_reader(query: &String, client: &Client, config: &Configuration) -> Opti
                     }
                     _ => {
                         let i: usize = match resp.parse() {
-                            Ok(u) => {u},
+                            Ok(u) => u,
                             Err(e) => {
                                 println!("{}", e);
                                 continue;
-                            },
+                            }
                         };
                         return Some(sl[i].clone());
                     }
