@@ -16,8 +16,7 @@ use cli::{
 use config::{configure, Configuration};
 use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
 use mrapi::{
-    defines::Version,
-    interactions::{get_project_version, print_project_info, search_package},
+    client::ApiClient, defines::Version, interactions::{get_project_version, print_project_info, search_package}
 };
 use pack::{
     create_pack,
@@ -118,13 +117,12 @@ fn main() {
         parser.parse_args_or_exit();
     }
 
+    let api_client = ApiClient::new(config.staging);
     let client = Client::new();
 
     if !search.is_empty() {
-        search_package(
-            &client,
+        api_client.search(
             &search,
-            config.staging,
             None,
             None,
             &Some(vec![

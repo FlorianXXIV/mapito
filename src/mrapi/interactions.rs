@@ -114,7 +114,7 @@ fn request_api(
 
 pub fn print_project_info(client: &Client, staging: usize, project_slug: String) {
     let project: Project =
-        get_project_info(client, staging, project_slug.clone()).expect("get_project_info");
+        get_project(client, staging, project_slug.clone()).expect("get_project_info");
     let members: Vec<Member> = serde_json::from_value(
         request_api(
             client,
@@ -205,7 +205,7 @@ pub fn get_project_version(
     Ok(project_version.expect("Unknown Error"))
 }
 
-pub fn get_project_info(
+pub fn get_project(
     client: &Client,
     staging: usize,
     project_slug: String,

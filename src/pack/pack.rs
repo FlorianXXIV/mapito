@@ -13,7 +13,7 @@ use crate::{
     client::Downloader,
     config::Configuration,
     mc_info::{MCVersion, MVDescriptor, LOADER, VT},
-    mrapi::interactions::{get_project_info, get_project_version},
+    mrapi::interactions::{get_project, get_project_version},
     pack::PackMod,
 };
 
@@ -162,7 +162,7 @@ impl Pack {
             mod_version.name.replace("\"", "")
         );
         for dependency in project_version.dependencies {
-            let dep_slug = get_project_info(client, staging, dependency.project_id)
+            let dep_slug = get_project(client, staging, dependency.project_id)
                 .expect("get_project_info")
                 .slug;
             if dependency.dependency_type == "required" && !self.mods.contains_key(&dep_slug) {

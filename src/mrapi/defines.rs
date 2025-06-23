@@ -41,7 +41,7 @@ pub struct Dependency {
     pub dependency_type: String,
 }
 
-//A modrinth Project, this can be a mod, modpack, resourcepack or shader
+/// A modrinth Project, this can be a mod, modpack, resourcepack or shader
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Project {
     pub slug: String,
@@ -66,7 +66,7 @@ pub struct License {
     pub url: Option<String>,
 }
 
-//The Members of a Team
+/// The Members of a Team
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Member {
     pub role: String,
