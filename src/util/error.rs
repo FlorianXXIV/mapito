@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display};
 #[derive(Debug)]
 enum ApiErrorKind {
     NotFound,
-    InvalidData,
+    ReqwestError(reqwest::Error)
 }
 
 #[derive(Debug)]
@@ -13,9 +13,9 @@ pub struct ApiError {
 
 impl Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let to_display = match self.kind {
+        let to_display = match &self.kind {
             ApiErrorKind::NotFound => "NotFound",
-            ApiErrorKind::InvalidData => "InvalidData",
+            ApiErrorKind::ReqwestError(e) => &e.to_string()
         };
         write!(f, "{}", to_display)
     }
@@ -42,7 +42,10 @@ impl ApiError {
         ApiError { kind: ApiErrorKind::NotFound }
     }
 
-    pub fn invalid_data() -> Self {
-        ApiError { kind: ApiErrorKind::InvalidData }
+}
+
+impl From<reqwest::Error> for ApiError {
+    fn from(value: reqwest::Error) -> Self {
+        ApiError { kind: ApiErrorKind::ReqwestError(value) }
     }
 }

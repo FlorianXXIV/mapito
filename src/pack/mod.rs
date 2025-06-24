@@ -2,17 +2,14 @@ use std::fs::{create_dir_all, File};
 use std::io::{Write};
 
 use pack::Pack;
-use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::{self};
 
 use crate::mc_info::VT;
+use crate::mrapi::client::ApiClient;
 use crate::util::error::ApiError;
 use crate::{
     config::Configuration,
-    mrapi::
-        interactions::get_project_version
-    ,
     MVDescriptor,
 };
 
@@ -35,8 +32,7 @@ impl PartialEq for PackMod {
 }
 
 pub fn create_pack(
-    client: &Client,
-    staging: usize,
+    client: &ApiClient,
     name: String,
     version_desc: MVDescriptor,
     mods: &Vec<String>,
@@ -48,7 +44,7 @@ pub fn create_pack(
     
 
     for mc_mod in mods {
-        if !pack.add_mod(mc_mod, client, staging).contains(&pack.version_info.mc_ver) {
+        if !pack.add_mod(mc_mod, client).contains(&pack.version_info.mc_ver) {
             panic!("added incompatible mod version");
         }
     }
@@ -74,16 +70,14 @@ pub fn create_pack(
     );
 }
 
-pub fn update_pack(client: &Client, name: String, config: &Configuration) -> Result<(), ApiError> {
+pub fn update_pack(client: &ApiClient, name: String, config: &Configuration) -> Result<(), ApiError> {
     let mut pack = Pack::open(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
         let mut mod_version: PackMod = value.try_into().expect("try_into");
-        let project_version = get_project_version(
-            client,
-            config.staging,
-            key.clone(),
-            pack.version_info.clone(),
+        let project_version = client.get_project_version(
+            &key,
+            &pack.version_info,
         )?;
         if mod_version.version_number != project_version.version_number {
             println!(

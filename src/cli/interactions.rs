@@ -1,16 +1,14 @@
 use std::{fmt::Display, str::FromStr};
 
-use reqwest::blocking::Client;
 
 use crate::{
-    cli::input::read_line_to_string, config::Configuration, mc_info::MVDescriptor,
-    mrapi::interactions::search_package,
+    cli::input::read_line_to_string, mc_info::MVDescriptor,
+    mrapi::client::ApiClient, util::error::ApiError,
 };
 
 /// repeats prompt to search for mods and returns a vector of the slugs of all chosen mods
 pub fn search_mods(
-    client: &Client,
-    config: &Configuration,
+    client: &ApiClient,
     version_desc: Option<&MVDescriptor>,
 ) -> Vec<String> {
     println!("Search for mods and add them to the pack.");
@@ -24,9 +22,9 @@ pub fn search_mods(
                 break;
             }
         };
-        match query_reader(&query, client, config, version_desc) {
-            Some(slug) => mods.push(slug),
-            None => println!("No mods Found"),
+        match query_reader(&query, client,  version_desc) {
+            Ok(slug) => mods.push(slug),
+            Err(e) => println!("{}", e.to_string()),
         }
     }
 
@@ -83,10 +81,9 @@ where
 
 fn query_reader(
     query: &String,
-    client: &Client,
-    config: &Configuration,
+    client: &ApiClient,
     version_desc: Option<&MVDescriptor>,
-) -> Option<String> {
+) -> Result<String, ApiError> {
     let mut offset = 0;
     let facets = match version_desc {
         Some(vd) => Some(vec![
@@ -97,19 +94,15 @@ fn query_reader(
         None => None,
     };
     loop {
-        let slugs = search_package(
-            client,
+        let slugs = client.search(
             query,
-            config.staging,
             None,
             Some(offset),
             &facets,
-        );
-        match slugs {
-            Some(sl) => {
+        )?;
                 println!(
                     "Select mod from 0 to {} or 'p'/'n' to change page, enter 'q' to quit.",
-                    sl.len() - 1
+                    slugs.len() - 1
                 );
                 let resp = read_line_to_string();
                 match resp.as_str() {
@@ -133,14 +126,9 @@ fn query_reader(
                                 continue;
                             }
                         };
-                        return Some(sl[i].clone());
+                        return Ok(slugs[i].clone());
                     }
                 }
             }
-            None => {
-                break;
-            }
-        }
-    }
-    return None;
+    return Err(ApiError::not_found());
 }

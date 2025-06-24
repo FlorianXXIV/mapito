@@ -16,8 +16,7 @@ use cli::{
 use config::{configure, Configuration};
 use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
 use mrapi::{
-    defines::Version,
-    interactions::{get_project_version, print_project_info, search_package},
+    client::ApiClient, defines::Version
 };
 use pack::{
     create_pack,
@@ -118,20 +117,19 @@ fn main() {
         parser.parse_args_or_exit();
     }
 
+    let api_client = ApiClient::new(config.staging);
     let client = Client::new();
 
     if !search.is_empty() {
-        search_package(
-            &client,
+        api_client.search(
             &search,
-            config.staging,
             None,
             None,
             &Some(vec![
                 vec![("versions".to_string(), config.mc_ver.to_string())],
                 vec![("categories".to_string(), config.loader.to_string())],
             ]),
-        );
+        ).expect("search");
         return;
     }
 
@@ -142,21 +140,19 @@ fn main() {
             loader: config.loader.clone(),
         };
         let dl_version: Version =
-            match get_project_version(&client, config.staging, dl_id, version_desc.clone()) {
+            match api_client.get_project_version(&dl_id, &version_desc) {
                 Ok(v) => v,
                 Err(e) => {
-                    println!("{}", e.to_string());
+                    println!("get_project_version: {}", e.to_string());
                     return;
                 }
             };
 
         let mut dependencies: Vec<Version> = Vec::new();
         for dependency in dl_version.dependencies {
-            let dep_ver = match get_project_version(
-                &client,
-                config.staging,
-                dependency.project_id,
-                version_desc.clone(),
+            let dep_ver = match api_client.get_project_version(
+                &dependency.project_id,
+                &version_desc,
             ) {
                 Ok(v) => v,
                 Err(e) => {
@@ -232,18 +228,18 @@ fn main() {
     }
 
     if !project_slug.is_empty() {
-        print_project_info(&client, config.staging, project_slug);
+        api_client.print_project_info(&project_slug);
         return;
     }
 
     match pack_action {
-        Some(PackAction::CREATE) => pack_creation_loop(&client, &config),
+        Some(PackAction::CREATE) => pack_creation_loop(&api_client, &config),
         Some(PackAction::UPDATE) => {
             println!("Please enter the name of the Pack you want to Update");
             let name = read_line_to_string();
-            update_pack(&client, name, &config).expect("update_pack");
+            update_pack(&api_client, name, &config).expect("update_pack");
         }
-        Some(PackAction::MODIFY) => pack_modification_loop(&client, &config),
+        Some(PackAction::MODIFY) => pack_modification_loop(&api_client, &config),
         Some(PackAction::INSTALL) => {
             if config.install_path.is_some() {
                 let pack = query_pack(PackAction::INSTALL, &config);
@@ -260,7 +256,7 @@ fn main() {
     }
 }
 
-fn pack_creation_loop(client: &Client, config: &Configuration) {
+fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     let mut version_desc = MVDescriptor {
         mc_ver: MCVersion::new(),
         version_types: vec![VT::RELEASE],
@@ -297,11 +293,10 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     println!(
         "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
     );
-    let mut mods: Vec<String> = search_mods(client, config, Some(&version_desc));
+    let mut mods: Vec<String> = search_mods(client,Some(&version_desc));
 
     create_pack(
         &client,
-        config.staging,
         name,
         version_desc,
         &mut mods,
@@ -310,7 +305,7 @@ fn pack_creation_loop(client: &Client, config: &Configuration) {
     return;
 }
 
-fn pack_modification_loop(client: &Client, config: &Configuration) {
+fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
     let mut pack = query_pack(PackAction::MODIFY, config);
     loop {
         println!("{}", pack.to_string(),);
@@ -385,9 +380,9 @@ fn pack_modification_loop(client: &Client, config: &Configuration) {
                 println!("  1 - remove a mod");
                 match prompt_for::<char>("") {
                     Some('0') => {
-                        let mods = search_mods(client, config, Some(&pack.version_info));
+                        let mods = search_mods(client,  Some(&pack.version_info));
                         for item in mods {
-                            pack.add_mod(&item, client, config.staging);
+                            pack.add_mod(&item, client);
                         }
                         pack.save(config);
                     }
