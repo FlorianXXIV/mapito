@@ -202,7 +202,10 @@ impl FromStr for MCVersion {
                     is_snap = true;
                     caps
                 }
-                None => return Err("Invalid version Format ".to_owned() + s),
+                None => {
+                    println!("WARNING: Got version {}, it has a 92.234532345% likelyhood of being an April fools snapshot, set version to 0.0.0", s);
+                    return Ok(MCVersion { major: 0, minor: 0, patch: Some(0), ident: None, latest: false, snapshot: false });
+                },
             },
         };
 
