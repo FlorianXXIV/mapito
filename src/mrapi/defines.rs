@@ -112,6 +112,12 @@ pub struct Member {
     pub user: User,
 }
 
+impl Display for Member {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Team: {}, Member: {}, {}", self.team_id, self.user.username, self.role)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub username: String,
