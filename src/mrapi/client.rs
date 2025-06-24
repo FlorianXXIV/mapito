@@ -151,7 +151,7 @@ impl ApiClient {
             "members:\n{}",
             members
                 .iter()
-                .map(|m| { m.to_string() })
+                .map(|m| { m.to_string() + "\n" })
                 .collect::<String>()
         )
     }

@@ -114,7 +114,7 @@ pub struct Member {
 
 impl Display for Member {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Team: {}, Member: {}, {}", self.team_id, self.user.username, self.role)
+        write!(f, "{}, {}", self.role, self.user.username)
     }
 }
 
