@@ -13,7 +13,7 @@ use crate::{
     client::Downloader,
     config::Configuration,
     mc_info::{MCVersion, MVDescriptor, LOADER, VT},
-    mrapi::interactions::{get_project, get_project_version},
+    mrapi::client::ApiClient,
     pack::PackMod,
 };
 
@@ -138,10 +138,10 @@ impl Pack {
     }
 
     /// adds a mod and its dependencies
-    pub fn add_mod(&mut self, mod_slug: &String, client: &Client, staging: usize) -> Vec<MCVersion> {
+    pub fn add_mod(&mut self, mod_slug: &String, client: &ApiClient) -> Vec<MCVersion> {
         println!("Looking for {mod_slug}");
         let project_version =
-            get_project_version(client, staging, mod_slug.clone(), self.version_info.clone())
+            client.get_project_version(&mod_slug, &self.version_info)
                 .expect("get_project_version");
         let mod_version = PackMod {
             name: project_version.name,
@@ -162,13 +162,13 @@ impl Pack {
             mod_version.name.replace("\"", "")
         );
         for dependency in project_version.dependencies {
-            let dep_slug = get_project(client, staging, dependency.project_id)
+            let dep_slug = client.get_project( &dependency.project_id)
                 .expect("get_project_info")
                 .slug;
             if dependency.dependency_type == "required" && !self.mods.contains_key(&dep_slug) {
                 println!("Dependency: ");
 
-                self.add_mod(&dep_slug, client, staging);
+                self.add_mod(&dep_slug, client);
             }
         }
         project_version.game_versions
