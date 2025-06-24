@@ -4,9 +4,15 @@ use colored::Colorize;
 use reqwest::{blocking::Client, blocking::Response, Url};
 use serde_json::Value;
 
+use crate::{
+    mc_info::MCVersion,
+    mrapi::{constants::MEMBERS, defines::Member},
+    util::error::ApiError,
+};
+
 use super::{
-    constants::{API_URL, FACETS, LIMIT, OFFSET, QUERY, SEARCH},
-    defines::SearchResp,
+    constants::{API_URL, FACETS, LIMIT, OFFSET, PROJECT, QUERY, SEARCH},
+    defines::{Project, SearchResp},
 };
 
 #[derive(Debug)]
@@ -26,20 +32,21 @@ impl ApiClient {
     }
 
     /// send a single request to modrinths api, with the given endpoint
-    fn request_api<I, K, V>(&self, endpoint: &String, params: Option<I>) -> Response
+    fn request_api_par<I, K, V>(&self, endpoint: &String, params: I) -> Result<Response, ApiError>
     where
         I: IntoIterator,
         I::Item: Borrow<(K, V)>,
         K: AsRef<str>,
         V: AsRef<str>,
     {
-        let query = match params {
-            Some(par) => {
-                Url::parse_with_params(&(API_URL[self.staging].to_owned() + endpoint), par).unwrap()
-            }
-            None => Url::parse(&(API_URL[self.staging].to_owned() + endpoint)).unwrap(),
-        };
-        self.client.get(query).send().expect("send")
+        let query =
+            Url::parse_with_params(&(API_URL[self.staging].to_owned() + endpoint), params).unwrap();
+        Ok(self.client.get(query).send()?)
+    }
+
+    fn request_api(&self, endpoint: &String) -> Result<Response, ApiError> {
+        let query = Url::parse(&(API_URL[self.staging].to_owned() + endpoint)).unwrap();
+        Ok(self.client.get(query).send()?)
     }
 
     pub fn search(
@@ -48,7 +55,7 @@ impl ApiClient {
         limit: Option<usize>,
         offset: Option<usize>,
         facets: &Option<Vec<Vec<(String, String)>>>,
-    ) -> Option<Vec<String>> {
+    ) -> Result<Vec<String>, ApiError> {
         let par_limit = match limit {
             Some(num) => num.to_string(),
             None => "10".to_owned(),
@@ -80,29 +87,22 @@ impl ApiClient {
                     }
                 }
                 str_facet += "]";
-                self.request_api(
+                self.request_api_par(
                     &SEARCH.to_string(),
-                    Some(&[
+                    &[
                         (QUERY, query),
                         (LIMIT, &par_limit),
                         (OFFSET, &par_offset),
                         (FACETS, &str_facet),
-                    ]),
+                    ],
                 )
             }
-            None => self
-                .request_api(
-                    &SEARCH.to_string(),
-                    Some(&[(QUERY, query), (LIMIT, &par_limit), (OFFSET, &par_offset)]),
-                ),
-        };
-        let query_response: SearchResp = match query.json() {
-            Ok(v) => v,
-            Err(_) => {
-                println!("Query failed.");
-                return None;
-            }
-        };
+            None => self.request_api_par(
+                &SEARCH.to_string(),
+                &[(QUERY, query), (LIMIT, &par_limit), (OFFSET, &par_offset)],
+            ),
+        }?;
+        let query_response: SearchResp = query.json()?;
 
         let mut slugs: Vec<String> = Vec::new();
         let mut counter = 0;
@@ -126,6 +126,34 @@ impl ApiClient {
             slugs.push(hit["slug"].to_string().replace("\"", ""));
         }
 
-        Some(slugs)
+        Ok(slugs)
     }
+
+    pub fn get_project(&self, project_slug: &String) -> Result<Project, String> {
+        let project: Project = self
+            .request_api(&(PROJECT.to_string() + "/" + project_slug))
+            .expect("request_api")
+            .json()
+            .expect("json");
+
+        Ok(project)
+    }
+
+    pub fn print_project_info(&self, project_slug: &String) {
+        let project = self.get_project(project_slug).expect("get_project");
+        let members: Vec<Member> = self
+            .request_api(&(PROJECT.to_string() + "/" + project_slug + MEMBERS))
+            .expect("request_api")
+            .json()
+            .expect("json");
+        println!("{}", project);
+        println!(
+            "members:\n{}",
+            members
+                .iter()
+                .map(|m| { m.to_string() })
+                .collect::<String>()
+        )
+    }
+
 }

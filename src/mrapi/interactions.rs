@@ -9,6 +9,7 @@ use super::{
     defines::{Member, Project, SearchResp, Version},
 };
 
+#[deprecated]
 pub fn search_package(
     client: &Client,
     query: &String,
@@ -205,6 +206,7 @@ pub fn get_project_version(
     Ok(project_version.expect("Unknown Error"))
 }
 
+#[deprecated]
 pub fn get_project(
     client: &Client,
     staging: usize,

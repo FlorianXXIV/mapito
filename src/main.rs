@@ -129,7 +129,7 @@ fn main() {
                 vec![("versions".to_string(), config.mc_ver.to_string())],
                 vec![("categories".to_string(), config.loader.to_string())],
             ]),
-        );
+        ).expect("search");
         return;
     }
 
@@ -230,7 +230,7 @@ fn main() {
     }
 
     if !project_slug.is_empty() {
-        print_project_info(&client, config.staging, project_slug);
+        api_client.print_project_info(&project_slug);
         return;
     }
 
