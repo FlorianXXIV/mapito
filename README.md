@@ -1,7 +1,7 @@
 # Mapito
 [![rust badge](https://img.shields.io/static/v1?label=Made%20with&message=Rust&logo=rust&labelColor=e82833&color=b11522)](https://www.rust-lang.org)
-[![license badge](https://img.shields.io/github/license/FlorianXXIV/modrinth-apitool
-)](https://github.com/FlorianXXIV/modrinth-apitool/blob/main/LICENSE)
+[![license badge](https://img.shields.io/github/license/FlorianXXIV/mapito
+)](https://github.com/FlorianXXIV/mapito/blob/main/LICENSE)
 
 Mapito M(odrinth-)apito(ol) is a Command line application that lets you search
 the Modrinth Mod database to download mods or even define your own Modpack.
