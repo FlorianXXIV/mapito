@@ -113,6 +113,7 @@ fn request_api(
     ))?
 }
 
+#[deprecated]
 pub fn print_project_info(client: &Client, staging: usize, project_slug: String) {
     let project: Project =
         get_project(client, staging, project_slug.clone()).expect("get_project_info");
@@ -162,6 +163,7 @@ pub fn print_project_info(client: &Client, staging: usize, project_slug: String)
     );
 }
 
+#[deprecated]
 pub fn get_project_version(
     client: &Client,
     staging: usize,

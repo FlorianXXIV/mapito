@@ -1,18 +1,20 @@
 use std::borrow::Borrow;
 
 use colored::Colorize;
-use reqwest::{blocking::Client, blocking::Response, Url};
-use serde_json::Value;
+use reqwest::{
+    blocking::{Client, Response},
+    Url,
+};
 
 use crate::{
-    mc_info::MCVersion,
+    mc_info::MVDescriptor,
     mrapi::{constants::MEMBERS, defines::Member},
     util::error::ApiError,
 };
 
 use super::{
-    constants::{API_URL, FACETS, LIMIT, OFFSET, PROJECT, QUERY, SEARCH},
-    defines::{Project, SearchResp},
+    constants::{API_URL, FACETS, LIMIT, OFFSET, PROJECT, QUERY, SEARCH, VERSION},
+    defines::{Project, SearchResp, Version},
 };
 
 #[derive(Debug)]
@@ -156,4 +158,30 @@ impl ApiClient {
         )
     }
 
+    pub fn get_project_version(
+        &self,
+        project_slug: &String,
+        version_desc: &MVDescriptor,
+    ) -> Result<Version, ApiError> {
+        let mut project_version: Option<Version> = None;
+        let versions: Vec<Version> = self
+            .request_api(&(PROJECT.to_owned() + "/" + &project_slug + VERSION))?
+            .json()?;
+        if version_desc.mc_ver.is_latest() {
+            project_version = Some(versions[0].clone());
+        } else {
+            for version in versions {
+                if version_desc.check_version_compat(&version) {
+                    project_version = Some(version.clone());
+                    break;
+                }
+            }
+        }
+
+        if project_version.is_none() {
+            return Err(ApiError::not_found());
+        }
+
+        Ok(project_version.expect("Unknown Error"))
+    }
 }
