@@ -1,16 +1,12 @@
 use std::{fmt::Display, str::FromStr};
 
-
 use crate::{
-    cli::input::read_line_to_string, mc_info::MVDescriptor,
-    mrapi::client::ApiClient, util::error::ApiError,
+    cli::input::read_line_to_string, mc_info::MVDescriptor, mrapi::client::ApiClient,
+    util::error::ApiError,
 };
 
 /// repeats prompt to search for mods and returns a vector of the slugs of all chosen mods
-pub fn search_mods(
-    client: &ApiClient,
-    version_desc: Option<&MVDescriptor>,
-) -> Vec<String> {
+pub fn search_mods(client: &ApiClient, version_desc: Option<&MVDescriptor>) -> Vec<String> {
     println!("Search for mods and add them to the pack.");
 
     let mut mods: Vec<String> = Vec::new();
@@ -22,7 +18,7 @@ pub fn search_mods(
                 break;
             }
         };
-        match query_reader(&query, client,  version_desc) {
+        match query_reader(&query, client, version_desc) {
             Ok(slug) => mods.push(slug),
             Err(e) => println!("{}", e.to_string()),
         }
@@ -94,41 +90,43 @@ fn query_reader(
         None => None,
     };
     loop {
-        let slugs = client.search(
-            query,
-            None,
-            Some(offset),
-            &facets,
-        )?;
-                println!(
-                    "Select mod from 0 to {} or 'p'/'n' to change page, enter 'q' to quit.",
-                    slugs.len() - 1
-                );
-                let resp = read_line_to_string();
-                match resp.as_str() {
-                    "n" => offset += 10,
-                    "p" => {
-                        if offset < 10 {
-                            println!("Already at first page");
-                            continue;
-                        } else {
-                            offset -= 10;
-                        }
-                    }
-                    "q" => {
-                        break;
-                    }
-                    _ => {
-                        let i: usize = match resp.parse() {
-                            Ok(u) => u,
-                            Err(e) => {
-                                println!("{}", e);
-                                continue;
-                            }
-                        };
-                        return Ok(slugs[i].clone());
-                    }
+        let slugs = client.search(query, None, Some(offset), &facets)?;
+        if slugs.len() <= 0 {
+            if offset >= 10 {
+                offset -= 10;
+                continue;
+            }
+            break;
+        }
+        println!(
+            "Select mod from 0 to {} or 'p'/'n' to change page, enter 'q' to quit.",
+            slugs.len() - 1
+        );
+        let resp = read_line_to_string();
+        match resp.as_str() {
+            "n" => offset += 10,
+            "p" => {
+                if offset < 10 {
+                    println!("Already at first page");
+                    continue;
+                } else {
+                    offset -= 10;
                 }
             }
+            "q" => {
+                break;
+            }
+            _ => {
+                let i: usize = match resp.parse() {
+                    Ok(u) => u,
+                    Err(e) => {
+                        println!("{}", e);
+                        continue;
+                    }
+                };
+                return Ok(slugs[i].clone());
+            }
+        }
+    }
     return Err(ApiError::not_found());
 }
