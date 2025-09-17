@@ -3,14 +3,14 @@ name = "mapito"
 version = "0.3.3"
 edition = "2021"
 authors = ["FlorianXXIV"]
-description = "A command line interface for interacting with the modrinth api to manage you minecraft mods more easily."
+description = "A command line interface for interacting with the modrinth api to manage your minecraft mods more easily."
 license = "EUPL-1.2"
 repository = "https://github.com/FlorianXXIV/modrinth-apitool"
 categories = ["command-line-utilities", "games"]
 
 [dependencies]
-argparse = "0.2.2"
 base16ct = {version="0.2.0", features=["alloc", "std"]}
+clap = { version = "4.5.47", features = ["derive"] }
 colored = "3"
 regex = "1.11.1"
 reqwest = {version="0.12",features=["blocking","json"]}

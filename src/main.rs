@@ -4,162 +4,74 @@ mod config;
 mod mc_info;
 mod mrapi;
 mod pack;
+mod parsing;
 mod util;
 
 use crate::client::Downloader;
 
-use argparse::{ArgumentParser, Store, StoreConst, StoreOption};
+use clap::Parser;
 use cli::{
     input::{confirm_input, query_pack, read_line_to_string},
     interactions::{prompt_for, prompt_multiple, search_mods},
 };
 use config::{configure, Configuration};
 use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
-use mrapi::{
-    client::ApiClient, defines::Version
-};
+use mrapi::{client::ApiClient, defines::Version};
 use pack::{
     create_pack,
     pack::{Pack, PackAction},
     update_pack,
 };
+use parsing::Commands;
 use reqwest::blocking::Client;
 
 fn main() {
     //variables set by arguments
-    let mut config = configure().expect("configure");
-    let mut search: String = String::new();
-    let mut dl_id: String = String::new();
-    let mut project_slug: String = String::new();
-    let mut pack_action: Option<PackAction> = None;
-
-    //argument parser arg/opt setup
-    {
-        let mut parser = ArgumentParser::new();
-
-        parser.set_description(
-            "A commandline tool to interact with the modrinth \
-            database, it allows you to search for projects on modrinth \
-            and download them for a minecraft vesion of you choosing into a \
-            folder specified by you.",
-        );
-
-        parser.refer(&mut config.staging).add_option(
-            &["-S", "--staging"],
-            StoreConst(0),
-            "If set, use the \
-                modrinth staging server rather than the normal api server. Used \
-                for testing",
-        );
-
-        parser.refer(&mut search).add_option(
-            &["-s", "--search"],
-            Store,
-            "Search the Modrinth database for a certain project/mod.",
-        );
-
-        parser.refer(&mut config.download_path).add_option(
-            &["-p", "--path"],
-            Store,
-            "The path where you want to download any files to. Default: \
-            ~/Downloads",
-        );
-
-        parser.refer(&mut dl_id).add_option(
-            &["-d", "--download"],
-            Store,
-            "Download the mod given by it's ID/Slug.",
-        );
-
-        parser.refer(&mut config.mc_ver).add_option(
-            &["-v", "--mc-ver"],
-            Store,
-            "Set the Minecraft version that you want to download the Mod for.",
-        );
-
-        parser.refer(&mut config.release_type).add_option(
-            &["--version-type"],
-            Store,
-            "Chose verion type, one of: release, beta, alpha",
-        );
-
-        parser.refer(&mut config.pack_path).add_option(
-            &["--pack-path"],
-            Store,
-            "Path where pack files are stored",
-        );
-
-        parser.refer(&mut config.loader).add_option(
-            &["-l", "--loader"],
-            Store,
-            "The modloader to be used with the mod",
-        );
-
-        parser.refer(&mut project_slug).add_option(
-            &["-i", "--project-info"],
-            Store,
-            "Get information about the specified project.",
-        );
-
-        parser.refer(&mut pack_action).add_option(
-            &["-P", "--pack"],
-            StoreOption,
-            "Different interactions with Packs, options are\n
-            Create, Update, Modify, Install",
-        );
-
-        parser.refer(&mut config.install_path).add_option(
-            &["--install-path"],
-            StoreOption,
-            "The path of the modfolder the pack should be installed to.",
-        );
-
-        parser.parse_args_or_exit();
-    }
-
-    let api_client = ApiClient::new(config.staging);
+    let config = configure().expect("configure");
+    let project_slug: String = String::new();
+    let parser = parsing::Arguments::parse();
+    let api_client = ApiClient::new(parser.staging);
     let client = Client::new();
 
-    if !search.is_empty() {
-        api_client.search(
-            &search,
-            None,
-            None,
-            &Some(vec![
-                vec![("versions".to_string(), config.mc_ver.to_string())],
-                vec![("categories".to_string(), config.loader.to_string())],
-            ]),
-        ).expect("search");
+    if let Some(search) = parser.search {
+        api_client
+            .search(
+                &search,
+                None,
+                None,
+                &Some(vec![
+                    vec![("versions".to_string(), config.mc_ver.to_string())],
+                    vec![("categories".to_string(), config.loader.to_string())],
+                ]),
+            )
+            .expect("search");
         return;
     }
 
-    if !dl_id.is_empty() {
+    if let Some(dl_id) = parser.download {
         let version_desc = MVDescriptor {
             mc_ver: config.mc_ver,
             version_types: vec![config.release_type.clone()],
             loader: config.loader.clone(),
         };
-        let dl_version: Version =
-            match api_client.get_project_version(&dl_id, &version_desc) {
-                Ok(v) => v,
-                Err(e) => {
-                    println!("get_project_version: {}", e.to_string());
-                    return;
-                }
-            };
+        let dl_version: Version = match api_client.get_project_version(&dl_id, &version_desc) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("get_project_version: {}", e.to_string());
+                return;
+            }
+        };
 
         let mut dependencies: Vec<Version> = Vec::new();
         for dependency in dl_version.dependencies {
-            let dep_ver = match api_client.get_project_version(
-                &dependency.project_id,
-                &version_desc,
-            ) {
-                Ok(v) => v,
-                Err(e) => {
-                    println!("get_project_version: {}", e.to_string());
-                    continue;
-                }
-            };
+            let dep_ver =
+                match api_client.get_project_version(&dependency.project_id, &version_desc) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("get_project_version: {}", e.to_string());
+                        continue;
+                    }
+                };
             dependencies.push(dep_ver);
         }
 
@@ -232,26 +144,38 @@ fn main() {
         return;
     }
 
-    match pack_action {
-        Some(PackAction::CREATE) => pack_creation_loop(&api_client, &config),
-        Some(PackAction::UPDATE) => {
-            println!("Please enter the name of the Pack you want to Update");
-            let name = read_line_to_string();
-            update_pack(&api_client, name, &config).expect("update_pack");
-        }
-        Some(PackAction::MODIFY) => pack_modification_loop(&api_client, &config),
-        Some(PackAction::INSTALL) => {
-            if config.install_path.is_some() {
-                let pack = query_pack(PackAction::INSTALL, &config);
-                pack.install(&client, &config);
-            } else {
-                eprintln!("No install path given")
+    match &parser.command {
+        Some(Commands::Pack(action)) => match action.pack_action {
+            PackAction::CREATE => pack_creation_loop(&api_client, &config),
+            PackAction::UPDATE => {
+                println!("Please enter the name of the Pack you want to Update");
+                let name = read_line_to_string();
+                update_pack(&api_client, name, &config).expect("update_pack");
             }
-        }
-        Some(PackAction::REMOVE) => {
-            let pack = query_pack(PackAction::REMOVE, &config);
-            pack.remove(&config);
-        }
+            PackAction::MODIFY => pack_modification_loop(&api_client, &config),
+            PackAction::INSTALL => {
+                if config.install_path.is_some() {
+                    let pack = query_pack(PackAction::INSTALL, &config);
+                    pack.install(&client, &config);
+                } else {
+                    eprintln!("No install path given")
+                }
+            }
+            PackAction::REMOVE => {
+                let pack = query_pack(PackAction::REMOVE, &config);
+                pack.remove(&config);
+            }
+            PackAction::LIST => {
+                todo!("implement listing packs");
+            }
+        },
+        Some(Commands::Config { info }) => {
+            if *info {
+                println!("TODO! Put config info here");
+            } else {
+                todo!("Implement Config changing")
+            }
+        },
         None => (),
     }
 }
@@ -293,15 +217,9 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     println!(
         "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
     );
-    let mut mods: Vec<String> = search_mods(client,Some(&version_desc));
+    let mut mods: Vec<String> = search_mods(client, Some(&version_desc));
 
-    create_pack(
-        &client,
-        name,
-        version_desc,
-        &mut mods,
-        &config,
-    );
+    create_pack(&client, name, version_desc, &mut mods, &config);
     return;
 }
 

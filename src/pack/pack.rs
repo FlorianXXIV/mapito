@@ -2,9 +2,9 @@ use std::{
     fmt::Display,
     fs::{create_dir_all, remove_file, File},
     io::{Read, Write},
-    str::FromStr,
 };
 
+use clap::Subcommand;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::Table;
@@ -17,13 +17,20 @@ use crate::{
     pack::PackMod,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum PackAction {
+    /// Create a new pack
     CREATE,
+    /// Update an existing pack
     UPDATE,
+    /// Modify an existing pack
     MODIFY,
+    /// Install an existing pack
     INSTALL,
+    /// Remove an existing pack
     REMOVE,
+    /// List all packs
+    LIST,
 }
 
 impl Display for PackAction {
@@ -34,23 +41,9 @@ impl Display for PackAction {
             PackAction::MODIFY => "modify",
             PackAction::INSTALL => "install",
             PackAction::REMOVE => "remove",
+            PackAction::LIST => "list",
         };
         write!(f, "{}", to_display)
-    }
-}
-
-impl FromStr for PackAction {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "create" => Ok(Self::CREATE),
-            "update" => Ok(Self::UPDATE),
-            "modify" => Ok(Self::MODIFY),
-            "install" => Ok(Self::INSTALL),
-            "remove" => Ok(Self::REMOVE),
-            _ => Err("Invalid input".to_string()),
-        }
     }
 }
 

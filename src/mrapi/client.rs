@@ -26,7 +26,8 @@ pub struct ApiClient {
 impl ApiClient {
     /// create a new api client, that can send requests to either modrinths normal endpoint
     /// or to the staging server depending on what bit is set.
-    pub fn new(staging: usize) -> ApiClient {
+    pub fn new(is_staging: bool) -> ApiClient {
+        let staging = if is_staging {1} else {0};
         ApiClient {
             client: Client::new(),
             staging: staging,
