@@ -7,7 +7,7 @@ mod pack;
 mod parsing;
 mod util;
 
-use crate::client::Downloader;
+use crate::{client::Downloader, util::byte_to_readable};
 
 use clap::Parser;
 use cli::{
@@ -52,12 +52,12 @@ fn main() {
         let version_desc = MVDescriptor {
             mc_ver: config.mc_ver,
             version_types: vec![config.release_type.clone()],
-            loader: config.loader.clone(),
+            loader: config.loader,
         };
         let dl_version: Version = match api_client.get_project_version(&dl_id, &version_desc) {
             Ok(v) => v,
             Err(e) => {
-                println!("get_project_version: {}", e.to_string());
+                println!("get_project_version: {}", e);
                 return;
             }
         };
@@ -68,20 +68,19 @@ fn main() {
                 match api_client.get_project_version(&dependency.project_id, &version_desc) {
                     Ok(v) => v,
                     Err(e) => {
-                        println!("get_project_version: {}", e.to_string());
+                        println!("get_project_version: {}", e);
                         continue;
                     }
                 };
             dependencies.push(dep_ver);
         }
 
-        let mut dl_size = (dl_version.files[0].size as f64 / 1048576 as f64).to_string();
-        dl_size.truncate(6);
+        let dl_size = byte_to_readable(dl_version.files[0].size);
         println!(
-            "Downloading: {}, {}\ntype: {}, downloads: {}, loader: {:?}\nsize: {} MiB",
+            "Downloading: {}, {}\ntype: {}, downloads: {}, loader: {:?}\nsize: {}",
             dl_version.name,
             dl_version.version_number,
-            dl_version.version_type.to_string(),
+            dl_version.version_type,
             dl_version.downloads,
             dl_version.loaders,
             dl_size
@@ -91,7 +90,7 @@ fn main() {
             println!("Downloading to {}", &config.download_path);
             let filename = dl_version.files[0].filename.as_str();
             let path = &(config.download_path.clone() + "/" + filename);
-            let _ = client
+            client
                 .download_file(
                     path,
                     dl_version.files[0].url.as_str(),
@@ -113,8 +112,8 @@ fn main() {
                     .iter()
                     .map(|dep| dep.name.clone()
                         + ", "
-                        + &(dep.files[0].size as f64 / 1048576 as f64).to_string()
-                        + "MB\n")
+                        + &byte_to_readable(dep.files[0].size)
+                        + "\n")
                     .collect::<String>()
             );
             println!("Download these too?");
@@ -123,7 +122,7 @@ fn main() {
                     println!("Downloading {}", dep.name);
                     let filename = dep.files[0].filename.as_str();
                     let path = &(config.download_path.clone() + "/" + filename);
-                    let _ = client
+                    client
                         .download_file(
                             path,
                             dep.files[0].url.as_str(),
@@ -175,7 +174,7 @@ fn main() {
             } else {
                 todo!("Implement Config changing")
             }
-        },
+        }
         None => (),
     }
 }
@@ -208,7 +207,7 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     version_desc.version_types = prompt_multiple("Please enter one of 'release' 'beta' 'alpha'");
     println!("Please confirm your input:\n Pack Name: {name}\n Minecraft version: {}\n Mod Loader: {}\n version types: {}",
         version_desc.mc_ver,
-        version_desc.loader.to_string(),
+        version_desc.loader,
         version_desc.version_types.iter().map(|vt| vt.to_string() + " ").collect::<String>());
     if !confirm_input() {
         println!("Aborting pack Creation");
@@ -217,16 +216,15 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     println!(
         "Now you can search for mods and add them to the pack, you can finish by entering 'q'"
     );
-    let mut mods: Vec<String> = search_mods(client, Some(&version_desc));
+    let mods: Vec<String> = search_mods(client, Some(&version_desc));
 
-    create_pack(&client, name, version_desc, &mut mods, &config);
-    return;
+    create_pack(client, name, version_desc, &mods, config);
 }
 
 fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
     let mut pack = query_pack(PackAction::MODIFY, config);
     loop {
-        println!("{}", pack.to_string(),);
+        println!("{}", pack,);
         match prompt_for::<char>("choose a category to modify:\n0 - Name\n1 - Version Info\n\tMinecraft Version\n\tVersion Types\n\tLoader\n2 - Mods\n") {
             Some('0') => {
                 pack.remove(config);
@@ -239,7 +237,7 @@ fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
             }
             Some('1') => {
                 let true_name = pack.name.clone();
-                pack.name = pack.name + "_tmp";
+                pack.name += "_tmp";
                 loop {
                     println!("What do you want to change?");
                     println!("  0 - Minecraft Version: {}", pack.version_info.mc_ver);
@@ -251,7 +249,7 @@ fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
                             .map(|vt| vt.to_string() + " ")
                             .collect::<String>()
                     );
-                    println!("  2 - Loader: {}", pack.version_info.loader.to_string());
+                    println!("  2 - Loader: {}", pack.version_info.loader);
                     match prompt_for::<char>("") {
                         Some('0') => {
                             match prompt_for::<MCVersion>("enter a new Minecraft version for the Pack.") {
