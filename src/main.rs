@@ -7,7 +7,9 @@ mod pack;
 mod parsing;
 mod util;
 
-use crate::{client::Downloader, util::byte_to_readable};
+use std::{env::var, os::unix::process::CommandExt, process::Command};
+
+use crate::{client::Downloader, config::config_path, util::byte_to_readable};
 
 use clap::Parser;
 use cli::{
@@ -170,9 +172,14 @@ fn main() {
         },
         Some(Commands::Config { info }) => {
             if *info {
-                println!("TODO! Put config info here");
+                println!("{}", config);
             } else {
-                todo!("Implement Config changing")
+                println!(
+                    "{}",
+                    Command::new(var("EDITOR").unwrap_or("nano".to_string()))
+                        .args(config_path())
+                        .exec()
+                );
             }
         }
         None => (),

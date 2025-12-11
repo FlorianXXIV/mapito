@@ -6,15 +6,15 @@ use crate::pack::pack::PackAction;
 #[command(version, about)]
 pub struct Arguments {
     /// Search for mods on the Modrinth Database
-    #[arg(short, long, group="mod_actions")]
+    #[arg(short, long, group = "mod_actions")]
     pub search: Option<String>,
 
     /// Download a mod from modrinth to the mod folder defined in the configuration.
-    #[arg(short,long, value_name = "SLUG|ID", group="mod_actions")]
+    #[arg(short, long, value_name = "SLUG|ID", group = "mod_actions")]
     pub download: Option<String>,
 
     /// Use the staging API instead of the regular API (for development)
-    #[arg(short='S', long)]
+    #[arg(short = 'S', long)]
     pub staging: bool,
 
     #[command(subcommand)]
@@ -25,11 +25,11 @@ pub struct Arguments {
 pub enum Commands {
     /// Perform multiple different Pack actions
     Pack(PackArgs),
-    /// Interactively edit Mapitos Configuration.
-    Config{
+    /// access config file in editor
+    Config {
         /// Print current config
-        #[arg(short,long)]
-        info: bool
+        #[arg(short, long)]
+        info: bool,
     },
 }
 

@@ -27,10 +27,10 @@ impl ApiClient {
     /// create a new api client, that can send requests to either modrinths normal endpoint
     /// or to the staging server depending on what bit is set.
     pub fn new(is_staging: bool) -> ApiClient {
-        let staging = if is_staging {1} else {0};
+        let staging = if is_staging { 1 } else { 0 };
         ApiClient {
             client: Client::new(),
-            staging: staging,
+            staging,
         }
     }
 
@@ -80,12 +80,12 @@ impl ApiClient {
                         str_facet += ":";
                         str_facet += or.1.as_str();
                         str_facet += "\"";
-                        if !(or == and.last().unwrap()) {
+                        if or != and.last().unwrap() {
                             str_facet += ",";
                         }
                     }
                     str_facet += "]";
-                    if !(and == facets.last().unwrap()) {
+                    if and != facets.last().unwrap() {
                         str_facet += ",";
                     }
                 }
