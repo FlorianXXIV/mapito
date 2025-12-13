@@ -1,16 +1,19 @@
+mod argparse;
 mod cli;
 mod client;
 mod config;
 mod mc_info;
 mod mrapi;
 mod pack;
-mod parsing;
 mod util;
 
 use std::{env::var, os::unix::process::CommandExt, process::Command};
 
-use crate::{client::Downloader, config::config_path, util::byte_to_readable};
+use crate::{
+    client::Downloader, config::config_path, pack::pack::list_packs, util::byte_to_readable,
+};
 
+use argparse::Commands;
 use clap::Parser;
 use cli::{
     input::{confirm_input, query_pack, read_line_to_string},
@@ -24,14 +27,13 @@ use pack::{
     pack::{Pack, PackAction},
     update_pack,
 };
-use parsing::Commands;
 use reqwest::blocking::Client;
 
 fn main() {
     //variables set by arguments
     let config = configure().expect("configure");
     let project_slug: String = String::new();
-    let parser = parsing::Arguments::parse();
+    let parser = argparse::Arguments::parse();
     let api_client = ApiClient::new(parser.staging);
     let client = Client::new();
 
@@ -167,7 +169,7 @@ fn main() {
                 pack.remove(&config);
             }
             PackAction::LIST => {
-                todo!("implement listing packs");
+                list_packs(config);
             }
         },
         Some(Commands::Config { info }) => {
@@ -175,7 +177,7 @@ fn main() {
                 println!("{}", config);
             } else {
                 println!(
-                    "{}",
+                    "Could not Start Editor: {}",
                     Command::new(var("EDITOR").unwrap_or("nano".to_string()))
                         .args(config_path())
                         .exec()

@@ -25,7 +25,10 @@ pub struct Arguments {
 pub enum Commands {
     /// Perform multiple different Pack actions
     Pack(PackArgs),
-    /// access config file in editor
+    /// modify config in your default editor
+    ///
+    /// The text editor is defined by the EDITOR environment variable on Linux systems
+    /// if no variable is found, nano is chosen as a default.
     Config {
         /// Print current config
         #[arg(short, long)]

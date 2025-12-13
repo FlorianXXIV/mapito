@@ -63,7 +63,7 @@ pub fn configure() -> Result<Configuration, String> {
 
 fn create_config() -> Result<File, std::io::Error> {
     let config_dir = match env::home_dir() {
-        Some(path) => path.join(".config/modrinth-apitool"),
+        Some(path) => path.join(".config/mapito"),
         None => {
             return Err(std::io::Error::last_os_error());
         }
@@ -110,7 +110,7 @@ fn get_default_cfg() -> Configuration {
             .to_owned(),
         pack_path: env::home_dir()
             .unwrap()
-            .join(".config/modrinth-apitool/packs")
+            .join(".config/mapito/packs")
             .to_str()
             .unwrap()
             .to_owned(),
@@ -123,7 +123,7 @@ fn get_default_cfg() -> Configuration {
 
 pub fn config_path() -> Result<PathBuf, String> {
     match env::home_dir() {
-        Some(path) => Ok(path.join(".config/modrinth-apitool/config.toml")),
+        Some(path) => Ok(path.join(".config/mapito/config.toml")),
         None => Err("Home Dir not Found".to_owned()),
     }
 }
