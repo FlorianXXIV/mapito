@@ -1,10 +1,11 @@
+use core::panic;
 use std::{
     fmt::Display,
-    fs::{create_dir_all, remove_file, File},
+    fs::{create_dir_all, read_dir, remove_file, File},
     io::{Read, Write},
-    str::FromStr,
 };
 
+use clap::Subcommand;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::Table;
@@ -17,13 +18,20 @@ use crate::{
     pack::PackMod,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum PackAction {
+    /// Create a new pack
     CREATE,
+    /// Update an existing pack
     UPDATE,
+    /// Modify an existing pack
     MODIFY,
+    /// Install an existing pack
     INSTALL,
+    /// Remove an existing pack
     REMOVE,
+    /// List all packs
+    LIST,
 }
 
 impl Display for PackAction {
@@ -34,23 +42,9 @@ impl Display for PackAction {
             PackAction::MODIFY => "modify",
             PackAction::INSTALL => "install",
             PackAction::REMOVE => "remove",
+            PackAction::LIST => "list",
         };
         write!(f, "{}", to_display)
-    }
-}
-
-impl FromStr for PackAction {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "create" => Ok(Self::CREATE),
-            "update" => Ok(Self::UPDATE),
-            "modify" => Ok(Self::MODIFY),
-            "install" => Ok(Self::INSTALL),
-            "remove" => Ok(Self::REMOVE),
-            _ => Err("Invalid input".to_string()),
-        }
     }
 }
 
@@ -140,9 +134,9 @@ impl Pack {
     /// adds a mod and its dependencies
     pub fn add_mod(&mut self, mod_slug: &String, client: &ApiClient) -> Vec<MCVersion> {
         println!("Looking for {mod_slug}");
-        let project_version =
-            client.get_project_version(&mod_slug, &self.version_info)
-                .expect("get_project_version");
+        let project_version = client
+            .get_project_version(&mod_slug, &self.version_info)
+            .expect("get_project_version");
         let mod_version = PackMod {
             name: project_version.name,
             verstion_type: project_version.version_type,
@@ -162,7 +156,8 @@ impl Pack {
             mod_version.name.replace("\"", "")
         );
         for dependency in project_version.dependencies {
-            let dep_slug = client.get_project( &dependency.project_id)
+            let dep_slug = client
+                .get_project(&dependency.project_id)
                 .expect("get_project_info")
                 .slug;
             if dependency.dependency_type == "required" && !self.mods.contains_key(&dep_slug) {
@@ -198,5 +193,33 @@ impl Display for Pack {
                 .collect::<String>(),
             self.version_info.loader.to_string()
         )
+    }
+}
+
+pub fn list_packs(config: Configuration) {
+    let dirs = match read_dir(&config.pack_path) {
+        Ok(d) => d,
+        Err(e) => {
+            panic!("{}", e)
+        }
+    };
+
+    for entry in dirs {
+        match entry {
+            Ok(entry) => println!(
+                "{}",
+                Pack::open(
+                    &entry
+                        .path()
+                        .file_stem()
+                        .expect("file_stem")
+                        .to_owned()
+                        .into_string()
+                        .expect("into_string"),
+                    &config
+                )
+            ),
+            Err(error) => panic!("{error}"),
+        }
     }
 }

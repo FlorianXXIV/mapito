@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::{
     env,
+    fmt::Display,
     fs::{create_dir_all, File},
     io::{ErrorKind, Read, Write},
+    path::PathBuf,
     str::FromStr,
 };
 use toml::{self, Table};
@@ -20,13 +22,24 @@ pub struct Configuration {
     pub install_path: Option<String>,
 }
 
-pub fn configure() -> Result<Configuration, String> {
-    let config: Configuration;
+impl Display for Configuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Release Type: {}\nLoader: {}\nDownload Path: {}\nPack Path: {}\nMinecraft Version: {}\nStaging: {}\nInstallation Path: {}",
+            self.release_type,
+            self.loader,
+            self.download_path,
+            self.pack_path,
+            self.mc_ver,
+            self.staging,
+            self.install_path.clone().unwrap_or("none".to_string())
+        )
+    }
+}
 
-    let config_dir = match env::home_dir() {
-        Some(path) => path.join(".config/modrinth-apitool/config.toml"),
-        None => return Err("Home Dir not Found".to_owned()),
-    };
+pub fn configure() -> Result<Configuration, String> {
+    let config_dir = config_path()?;
 
     let mut config_fd = match File::open(config_dir.as_path()) {
         Ok(v) => v,
@@ -39,7 +52,7 @@ pub fn configure() -> Result<Configuration, String> {
     let mut body = String::new();
     config_fd.read_to_string(&mut body).expect("read_to_string");
 
-    config = parse_config(body)?;
+    let config: Configuration = parse_config(body)?;
 
     let mut config_fd = File::create(config_dir.as_path()).expect("open");
 
@@ -50,7 +63,7 @@ pub fn configure() -> Result<Configuration, String> {
 
 fn create_config() -> Result<File, std::io::Error> {
     let config_dir = match env::home_dir() {
-        Some(path) => path.join(".config/modrinth-apitool"),
+        Some(path) => path.join(".config/mapito"),
         None => {
             return Err(std::io::Error::last_os_error());
         }
@@ -60,7 +73,7 @@ fn create_config() -> Result<File, std::io::Error> {
     let defaults = get_default_cfg();
     write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
 
-    return Ok(config);
+    Ok(config)
 }
 
 fn parse_config(body: String) -> Result<Configuration, String> {
@@ -97,7 +110,7 @@ fn get_default_cfg() -> Configuration {
             .to_owned(),
         pack_path: env::home_dir()
             .unwrap()
-            .join(".config/modrinth-apitool/packs")
+            .join(".config/mapito/packs")
             .to_str()
             .unwrap()
             .to_owned(),
@@ -105,5 +118,12 @@ fn get_default_cfg() -> Configuration {
         mc_ver: MCVersion::latest(),
         staging: 0,
         install_path: None,
+    }
+}
+
+pub fn config_path() -> Result<PathBuf, String> {
+    match env::home_dir() {
+        Some(path) => Ok(path.join(".config/mapito/config.toml")),
+        None => Err("Home Dir not Found".to_owned()),
     }
 }
