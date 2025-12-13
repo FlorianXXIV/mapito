@@ -176,7 +176,7 @@ fn main() {
             if *info {
                 println!("{}", config);
             } else {
-                println!(
+                eprintln!(
                     "Could not Start Editor: {}",
                     Command::new(var("EDITOR").unwrap_or("nano".to_string()))
                         .args(config_path())
