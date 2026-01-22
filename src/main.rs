@@ -10,7 +10,8 @@ mod util;
 use std::{env::var, os::unix::process::CommandExt, process::Command};
 
 use crate::{
-    client::Downloader, config::config_path, pack::pack::list_packs, util::byte_to_readable,
+    cli::interactions::list_select, client::Downloader, config::config_path,
+    pack::pack::list_packs, util::byte_to_readable,
 };
 
 use argparse::Commands;
@@ -202,14 +203,22 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     version_desc.mc_ver = match prompt_for("Please enter the Minecraft version of this pack") {
         Some(ver) => ver,
         None => {
-            println!("{}", abort_msg);
+            println!("{abort_msg}");
             return;
         }
     };
-    version_desc.loader = match prompt_for("Please enter what loader you want to use") {
+    version_desc.loader = match list_select(
+        "Select a Modloader",
+        &[
+            LOADER::FABRIC,
+            LOADER::QUILT,
+            LOADER::NEOFORGE,
+            LOADER::FORGE,
+        ],
+    ) {
         Some(loader) => loader,
         None => {
-            println!("{}", abort_msg);
+            println!("{abort_msg}");
             return;
         }
     };
