@@ -84,6 +84,42 @@ pub fn list_select<T: Display + Copy>(prompt: &str, options: &[T]) -> Option<T> 
     let j = prompt_for::<usize>("Select a Number")?;
     Some(options[j])
 }
+/// prompt user to select multiple options of a list
+pub fn list_multi_select<T: Display + Copy>(prompt: &str, options: &[T]) -> Option<Vec<T>> {
+    println!("{prompt}:");
+    let mut selected = Vec::new();
+    let mut ret = Vec::new();
+    for (i, t) in options.iter().enumerate() {
+        selected.push(false);
+        println!("[ ] [{i}]: {t}");
+    }
+    loop {
+        let j = match prompt_for::<usize>("Select an Option") {
+            Some(n) => n,
+            None => {
+                break;
+            }
+        };
+        selected[j] = !selected[j];
+        for (i, t) in options.iter().enumerate() {
+            if selected[i] {
+                println!("[x] [{i}]: {t}");
+            } else {
+                println!("[ ] [{i}]: {t}");
+            }
+        }
+    }
+    for (i, t) in options.iter().enumerate() {
+        if selected[i] {
+            ret.push(*t);
+        }
+    }
+    if !ret.is_empty() {
+        Some(ret)
+    } else {
+        None
+    }
+}
 
 fn query_reader(
     query: &String,

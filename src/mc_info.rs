@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::mrapi::defines::Version;
 
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, Copy, PartialEq)]
 pub enum VT {
     RELEASE,
     BETA,
@@ -204,8 +204,15 @@ impl FromStr for MCVersion {
                 }
                 None => {
                     println!("WARNING: Got version {}, it has a 92.234532345% likelyhood of being an April fools snapshot, set version to 0.0.0", s);
-                    return Ok(MCVersion { major: 0, minor: 0, patch: Some(0), ident: None, latest: false, snapshot: false });
-                },
+                    return Ok(MCVersion {
+                        major: 0,
+                        minor: 0,
+                        patch: Some(0),
+                        ident: None,
+                        latest: false,
+                        snapshot: false,
+                    });
+                }
             },
         };
 
@@ -265,7 +272,7 @@ impl MCVersion {
     pub fn is_latest(&self) -> bool {
         self.latest
     }
-    
+
     pub fn is_snapshot(&self) -> bool {
         self.snapshot
     }
@@ -310,7 +317,7 @@ impl PartialOrd for MCVersion {
                 return Some(std::cmp::Ordering::Equal);
             } else if self.ident.is_none() {
                 if other.ident.is_some() {
-                return Some(std::cmp::Ordering::Greater);
+                    return Some(std::cmp::Ordering::Greater);
                 } else {
                     return None;
                 }
