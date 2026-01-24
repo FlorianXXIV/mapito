@@ -20,7 +20,7 @@ pub fn search_mods(client: &ApiClient, version_desc: Option<&MVDescriptor>) -> V
         };
         match query_reader(&query, client, version_desc) {
             Ok(slug) => mods.push(slug),
-            Err(e) => println!("{}", e.to_string()),
+            Err(e) => println!("{}", e),
         }
     }
 
@@ -75,6 +75,52 @@ where
     ret
 }
 
+/// prompt user to select one item of a list.
+pub fn list_select<T: Display + Copy>(prompt: &str, options: &[T]) -> Option<T> {
+    println!("{prompt}:");
+    for (i, t) in options.iter().enumerate() {
+        println!("[{i}]: {t}");
+    }
+    let j = prompt_for::<usize>("Select a Number")?;
+    Some(options[j])
+}
+/// prompt user to select multiple options of a list
+pub fn list_multi_select<T: Display + Copy>(prompt: &str, options: &[T]) -> Option<Vec<T>> {
+    println!("{prompt}:");
+    let mut selected = Vec::new();
+    let mut ret = Vec::new();
+    for (i, t) in options.iter().enumerate() {
+        selected.push(false);
+        println!("[ ] [{i}]: {t}");
+    }
+    loop {
+        let j = match prompt_for::<usize>("Select an Option") {
+            Some(n) => n,
+            None => {
+                break;
+            }
+        };
+        selected[j] = !selected[j];
+        for (i, t) in options.iter().enumerate() {
+            if selected[i] {
+                println!("[x] [{i}]: {t}");
+            } else {
+                println!("[ ] [{i}]: {t}");
+            }
+        }
+    }
+    for (i, t) in options.iter().enumerate() {
+        if selected[i] {
+            ret.push(*t);
+        }
+    }
+    if !ret.is_empty() {
+        Some(ret)
+    } else {
+        None
+    }
+}
+
 fn query_reader(
     query: &String,
     client: &ApiClient,
@@ -91,7 +137,7 @@ fn query_reader(
     };
     loop {
         let slugs = client.search(query, None, Some(offset), &facets)?;
-        if slugs.len() <= 0 {
+        if slugs.is_empty() {
             if offset >= 10 {
                 offset -= 10;
                 continue;
@@ -128,5 +174,5 @@ fn query_reader(
             }
         }
     }
-    return Err(ApiError::not_found());
+    Err(ApiError::not_found())
 }

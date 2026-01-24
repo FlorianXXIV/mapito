@@ -10,7 +10,11 @@ mod util;
 use std::{env::var, os::unix::process::CommandExt, process::Command};
 
 use crate::{
-    client::Downloader, config::config_path, pack::pack::list_packs, util::byte_to_readable,
+    cli::interactions::{list_multi_select, list_select},
+    client::Downloader,
+    config::config_path,
+    pack::pack::list_packs,
+    util::byte_to_readable,
 };
 
 use argparse::Commands;
@@ -55,7 +59,7 @@ fn main() {
     if let Some(dl_id) = parser.download {
         let version_desc = MVDescriptor {
             mc_ver: config.mc_ver,
-            version_types: vec![config.release_type.clone()],
+            version_types: vec![config.release_type],
             loader: config.loader,
         };
         let dl_version: Version = match api_client.get_project_version(&dl_id, &version_desc) {
@@ -202,18 +206,33 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     version_desc.mc_ver = match prompt_for("Please enter the Minecraft version of this pack") {
         Some(ver) => ver,
         None => {
-            println!("{}", abort_msg);
+            println!("{abort_msg}");
             return;
         }
     };
-    version_desc.loader = match prompt_for("Please enter what loader you want to use") {
+    version_desc.loader = match list_select(
+        "Select a Modloader",
+        &[
+            LOADER::FABRIC,
+            LOADER::QUILT,
+            LOADER::NEOFORGE,
+            LOADER::FORGE,
+        ],
+    ) {
         Some(loader) => loader,
         None => {
-            println!("{}", abort_msg);
+            println!("{abort_msg}");
             return;
         }
     };
-    version_desc.version_types = prompt_multiple("Please enter one of 'release' 'beta' 'alpha'");
+    version_desc.version_types =
+        match list_multi_select("Choose Version Types", &[VT::RELEASE, VT::BETA, VT::ALPHA]) {
+            Some(vt) => vt,
+            None => {
+                println!("{abort_msg}");
+                return;
+            }
+        };
     println!("Please confirm your input:\n Pack Name: {name}\n Minecraft version: {}\n Mod Loader: {}\n version types: {}",
         version_desc.mc_ver,
         version_desc.loader,
@@ -270,10 +289,21 @@ fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
                         }
                         Some('1') => {
                             println!("enter new version types for the Pack.");
-                            pack.version_info.version_types = prompt_multiple("Enter new version types for the Pack.");
+                            match list_multi_select("Enter new version types for the Pack.", &[VT::RELEASE, VT::BETA, VT::ALPHA]) {
+                                Some(vt) => {pack.version_info.version_types = vt},
+                                None => println!("Version Types not changed"),
+                            };
                         }
                         Some('2') => {
-                            match prompt_for::<LOADER>("Please enter the loader you want to change to") {
+                            match list_select(
+                                "Please enter the loader you want to change to",
+                                &[
+                                    LOADER::FABRIC,
+                                    LOADER::QUILT,
+                                    LOADER::NEOFORGE,
+                                    LOADER::FORGE
+                                ]
+                            ) {
                                 Some(loader) => pack.version_info.loader = loader,
                                 None => println!("Loader not changed."),
                             };
