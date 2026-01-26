@@ -1,14 +1,23 @@
 use core::panic;
 
-use reqwest::{blocking::Client, Result};
+use reqwest::blocking::Client;
 use sha2::{Digest, Sha512};
 
+use crate::util::error::ApiError;
+
 pub trait Downloader {
-    fn download_file(&self, path: &str, url: &str, hash: &str) -> Result<()>;
+    fn download_file(&self, path: &str, url: &str, hash: &str) -> Result<(), ApiError>;
 }
 impl Downloader for Client {
-    fn download_file(&self, path: &str, url: &str, hash: &str) -> Result<()> {
-        let body = self.get(url).send().unwrap().bytes().unwrap();
+    fn download_file(&self, path: &str, url: &str, hash: &str) -> Result<(), ApiError> {
+        let body = match self.get(url).send() {
+            Ok(resp) => resp,
+            Err(e) => {
+                panic!("Failed to send request: {e}");
+            }
+        }
+        .bytes()
+        .unwrap();
 
         println!("Checking data integrity.");
 
@@ -19,7 +28,8 @@ impl Downloader for Client {
             println!("Integrity check passed.");
             let _ = std::fs::write(path, &body).unwrap();
         } else {
-            panic!("Downloaded Data does not match provided Hash!")
+            println!("Integrity check failed.");
+            return Err(ApiError::not_found());
         }
         Ok(())
     }

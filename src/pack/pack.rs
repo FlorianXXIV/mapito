@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use toml::Table;
 
 use crate::{
+    cli::input::confirm_input,
     client::Downloader,
     config::Configuration,
     mc_info::{MCVersion, MVDescriptor, LOADER, VT},
@@ -134,19 +135,9 @@ impl Pack {
     /// adds a mod and its dependencies
     pub fn add_mod(&mut self, mod_slug: &String, client: &ApiClient) -> Vec<MCVersion> {
         println!("Looking for {mod_slug}");
-        let project_version = client
-            .get_project_version(&mod_slug, &self.version_info)
-            .expect("get_project_version");
-        let mod_version = PackMod {
-            name: project_version.name,
-            verstion_type: project_version.version_type,
-            version_number: project_version.version_number,
-            file_url: project_version.files[0].url.clone(),
-            sha512: project_version.files[0].hashes["sha512"]
-                .to_string()
-                .replace("\"", ""),
-            file_name: project_version.files[0].filename.clone(),
-        };
+
+        let (mod_version, game_versions) = self.fetch_mod(mod_slug, client);
+
         self.mods.insert(
             mod_slug.to_string(),
             toml::Value::try_from(&mod_version).expect("try_from"),
@@ -155,7 +146,7 @@ impl Pack {
             "Found mod '{}' and added it to pack",
             mod_version.name.replace("\"", "")
         );
-        for dependency in project_version.dependencies {
+        for dependency in mod_version.dependencies {
             let dep_slug = client
                 .get_project(&dependency.project_id)
                 .expect("get_project_info")
@@ -166,16 +157,61 @@ impl Pack {
                 self.add_mod(&dep_slug, client);
             }
         }
-        project_version.game_versions
+        game_versions
     }
 
-    pub fn install(&self, client: &Client, config: &Configuration) {
-        for (key, value) in &self.mods {
+    /// Downloads all mods from the pack to the download path given in the configuration.
+    /// If a download fails once we try and update the mod entry in the pack and redo the download
+    /// once.
+    pub fn install(&mut self, client: &ApiClient, config: &Configuration) {
+        for (key, value) in self.mods.clone() {
             let mod_version: PackMod = value.clone().try_into().expect("try_into");
-            let dl_path = config.install_path.clone().unwrap() + "/" + &mod_version.file_name;
+            let dl_path = config.install_path.clone().unwrap() + &mod_version.file_name;
             println!("Downloading '{key}' to '{dl_path}' ");
-            let _ = client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512);
+            match client.download_file(&dl_path, &mod_version.file_url, &mod_version.sha512) {
+                Ok(_) => {}
+                Err(_) => {
+                    println!(
+                        "Downloading '{key}' failed. Update pack entry to resolve possible errors and try again?"
+                    );
+                    if confirm_input() {
+                        let (fetched, _) = self.fetch_mod(&key, client);
+                        self.mods.insert(
+                            key.to_string(),
+                            toml::Value::try_from(&fetched).expect("try_from"),
+                        );
+                        self.save(config);
+                        println!("Retry Downloading '{key}' to '{dl_path}'");
+                        client
+                            .download_file(&dl_path, &fetched.file_url, &fetched.sha512)
+                            .expect("download_file");
+                    } else {
+                        println!("Could not download '{key}'");
+                    }
+                }
+            };
         }
+    }
+
+    /// Get a single Pack mod with its Minecraft Versions
+    fn fetch_mod(&self, mod_slug: &String, client: &ApiClient) -> (PackMod, Vec<MCVersion>) {
+        let project_version = client
+            .get_project_version(mod_slug, &self.version_info)
+            .expect("get_project_version");
+        (
+            PackMod {
+                name: project_version.name,
+                verstion_type: project_version.version_type,
+                version_number: project_version.version_number,
+                file_url: project_version.files[0].url.clone(),
+                sha512: project_version.files[0].hashes["sha512"]
+                    .to_string()
+                    .replace("\"", ""),
+                file_name: project_version.files[0].filename.clone(),
+                dependencies: project_version.dependencies,
+            },
+            project_version.game_versions,
+        )
     }
 }
 

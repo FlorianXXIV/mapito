@@ -1,5 +1,5 @@
 use std::fs::{create_dir_all, File};
-use std::io::{Write};
+use std::io::Write;
 
 use pack::Pack;
 use serde::{Deserialize, Serialize};
@@ -7,11 +7,9 @@ use toml::{self};
 
 use crate::mc_info::VT;
 use crate::mrapi::client::ApiClient;
+use crate::mrapi::defines::Dependency;
 use crate::util::error::ApiError;
-use crate::{
-    config::Configuration,
-    MVDescriptor,
-};
+use crate::{config::Configuration, MVDescriptor};
 
 pub mod pack;
 
@@ -23,6 +21,7 @@ struct PackMod {
     file_url: String,
     file_name: String,
     sha512: String,
+    dependencies: Vec<Dependency>,
 }
 
 impl PartialEq for PackMod {
@@ -41,10 +40,12 @@ pub fn create_pack(
     let mut pack = Pack::new();
     pack.name = name;
     pack.version_info = version_desc.clone();
-    
 
     for mc_mod in mods {
-        if !pack.add_mod(mc_mod, client).contains(&pack.version_info.mc_ver) {
+        if !pack
+            .add_mod(mc_mod, client)
+            .contains(&pack.version_info.mc_ver)
+        {
             panic!("added incompatible mod version");
         }
     }
@@ -70,15 +71,16 @@ pub fn create_pack(
     );
 }
 
-pub fn update_pack(client: &ApiClient, name: String, config: &Configuration) -> Result<(), ApiError> {
+pub fn update_pack(
+    client: &ApiClient,
+    name: String,
+    config: &Configuration,
+) -> Result<(), ApiError> {
     let mut pack = Pack::open(&name, config);
     println!("Updating mod entries in {name} Modpack.");
     for (key, value) in pack.mods.clone() {
         let mut mod_version: PackMod = value.try_into().expect("try_into");
-        let project_version = client.get_project_version(
-            &key,
-            &pack.version_info,
-        )?;
+        let project_version = client.get_project_version(&key, &pack.version_info)?;
         if mod_version.version_number != project_version.version_number {
             println!(
                 "Found new version of {}\nOld: {}\nNew: {}",
@@ -104,4 +106,3 @@ pub fn update_pack(client: &ApiClient, name: String, config: &Configuration) -> 
     println!("To install the Updated mods, use '--pack install' for {pack_name}");
     Ok(())
 }
-

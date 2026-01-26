@@ -7,6 +7,7 @@ use reqwest::{
 };
 
 use crate::{
+    client::Downloader,
     mc_info::MVDescriptor,
     mrapi::{constants::MEMBERS, defines::Member},
     util::error::ApiError,
@@ -184,5 +185,11 @@ impl ApiClient {
         }
 
         Ok(project_version.expect("Unknown Error"))
+    }
+}
+
+impl Downloader for ApiClient {
+    fn download_file(&self, path: &str, url: &str, hash: &str) -> Result<(), ApiError> {
+        self.client.download_file(path, url, hash)
     }
 }
