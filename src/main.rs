@@ -39,7 +39,6 @@ fn main() {
     let project_slug: String = String::new();
     let parser = argparse::Arguments::parse();
     let api_client = ApiClient::new(parser.staging);
-    let client = Client::new();
 
     if let Some(search) = parser.search {
         api_client
@@ -98,7 +97,7 @@ fn main() {
             println!("Downloading to {}", &config.download_path);
             let filename = dl_version.files[0].filename.as_str();
             let path = &(config.download_path.clone() + "/" + filename);
-            client
+            api_client
                 .download_file(
                     path,
                     dl_version.files[0].url.as_str(),
@@ -130,7 +129,7 @@ fn main() {
                     println!("Downloading {}", dep.name);
                     let filename = dep.files[0].filename.as_str();
                     let path = &(config.download_path.clone() + "/" + filename);
-                    client
+                    api_client
                         .download_file(
                             path,
                             dep.files[0].url.as_str(),
@@ -162,8 +161,8 @@ fn main() {
             PackAction::MODIFY => pack_modification_loop(&api_client, &config),
             PackAction::INSTALL => {
                 if config.install_path.is_some() {
-                    let pack = query_pack(PackAction::INSTALL, &config);
-                    pack.install(&client, &config);
+                    let mut pack = query_pack(PackAction::INSTALL, &config);
+                    pack.install(&api_client, &config);
                 } else {
                     eprintln!("No install path given")
                 }
