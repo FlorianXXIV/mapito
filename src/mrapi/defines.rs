@@ -4,8 +4,8 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::mc_info::Loader;
 use crate::mc_info::MCVersion;
-use crate::mc_info::LOADER;
 use crate::mc_info::VT;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,7 +21,7 @@ pub struct SearchResp {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Version {
     pub game_versions: Vec<MCVersion>,
-    pub loaders: Vec<LOADER>,
+    pub loaders: Vec<Loader>,
     pub name: String,
     pub version_number: String,
     pub downloads: u32,
@@ -58,7 +58,7 @@ pub struct Project {
     pub downloads: u32,
     pub game_versions: Vec<MCVersion>,
     pub categories: Vec<String>,
-    pub loaders: Vec<LOADER>,
+    pub loaders: Vec<Loader>,
     pub source_url: Option<String>,
 }
 

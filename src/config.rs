@@ -9,12 +9,12 @@ use std::{
 };
 use toml::{self, Table};
 
-use crate::mc_info::{MCVersion, LOADER, VT};
+use crate::mc_info::{Loader, MCVersion, MCVersionUtils, VT};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
     pub release_type: VT,
-    pub loader: LOADER,
+    pub loader: Loader,
     pub download_path: String,
     pub pack_path: String,
     pub mc_ver: MCVersion,
@@ -86,7 +86,7 @@ fn parse_config(body: String) -> Result<Configuration, String> {
     for (key, value) in cfg_table {
         match key.as_str() {
             "release_type" => config.release_type = VT::from_str(value.as_str().unwrap()).unwrap(),
-            "loader" => config.loader = LOADER::from_str(value.as_str().unwrap()).unwrap(),
+            "loader" => config.loader = Loader::from_str(value.as_str().unwrap()).unwrap(),
             "download_path" => config.download_path = value.try_into().unwrap(),
             "pack_path" => config.pack_path = value.try_into().unwrap(),
             "mc_ver" => config.mc_ver = value.try_into().unwrap(),
@@ -101,7 +101,7 @@ fn parse_config(body: String) -> Result<Configuration, String> {
 
 fn get_default_cfg() -> Configuration {
     Configuration {
-        release_type: VT::RELEASE,
+        release_type: VT::Release,
         download_path: env::home_dir()
             .unwrap()
             .join("Downloads")
@@ -114,7 +114,7 @@ fn get_default_cfg() -> Configuration {
             .to_str()
             .unwrap()
             .to_owned(),
-        loader: LOADER::FABRIC,
+        loader: Loader::Fabric,
         mc_ver: MCVersion::latest(),
         staging: 0,
         install_path: None,
