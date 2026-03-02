@@ -1,6 +1,6 @@
 [package]
 name = "mapito"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 authors = ["FlorianXXIV"]
 description = "A command line interface for interacting with the modrinth api to manage your minecraft mods more easily."
@@ -9,12 +9,12 @@ repository = "https://git.florianxxiv.dev/SchmiedeBS/mapito"
 categories = ["command-line-utilities", "games"]
 
 [dependencies]
-base16ct = {version="0.2.0", features=["alloc", "std"]}
+base16ct = { version = "0.2.0", features = ["alloc", "std"] }
 clap = { version = "4.5.47", features = ["derive"] }
 colored = "3"
 regex = "1.11.1"
-reqwest = {version="0.12",features=["blocking","json"]}
-serde = {version="1.0.214",features=["derive"]}
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0.132"
 sha2 = "0.10.8"
 toml = "0.8.19"
