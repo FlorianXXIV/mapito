@@ -8,7 +8,7 @@ use reqwest::{
 
 use crate::{
     client::Downloader,
-    mc_info::MVDescriptor,
+    mc_info::{MCVersionUtils, MVDescriptor},
     mrapi::{constants::MEMBERS, defines::Member},
     util::error::ApiError,
 };

@@ -6,7 +6,6 @@ use std::{
 };
 
 use clap::Subcommand;
-use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use toml::Table;
 
@@ -14,7 +13,7 @@ use crate::{
     cli::input::confirm_input,
     client::Downloader,
     config::Configuration,
-    mc_info::{MCVersion, MVDescriptor, LOADER, VT},
+    mc_info::{Loader, MCVersion, MVDescriptor, VT},
     mrapi::client::ApiClient,
     pack::PackMod,
 };
@@ -63,24 +62,19 @@ impl Pack {
             name: "".to_string(),
             version_info: MVDescriptor {
                 mc_ver: MCVersion::new(),
-                version_types: vec![VT::RELEASE, VT::BETA, VT::ALPHA],
-                loader: LOADER::FABRIC,
+                version_types: vec![VT::Release, VT::Beta, VT::Alpha],
+                loader: Loader::Fabric,
             },
             mods: Table::new(),
         }
     }
 
     /// open the pack file for the given modpack and return Pack object
-    pub fn open(name: &String, config: &Configuration) -> Self {
+    pub fn open(name: &str, config: &Configuration) -> Self {
         let mut pack_file = File::open(
             config.pack_path.clone()
                 + "/"
-                + name
-                    .clone()
-                    .to_lowercase()
-                    .as_str()
-                    .replace(" ", "-")
-                    .as_str()
+                + name.to_lowercase().as_str().replace(" ", "-").as_str()
                 + ".mtpck",
         )
         .expect("open");
@@ -88,9 +82,7 @@ impl Pack {
 
         pack_file.read_to_string(&mut body).expect("read_to_string");
 
-        let pack = toml::from_str::<Pack>(&body).expect("from_string");
-
-        pack
+        toml::from_str::<Pack>(&body).expect("from_string")
     }
 
     /// Print all mods contained in the Pack
@@ -227,7 +219,7 @@ impl Display for Pack {
                 .iter()
                 .map(|vt| vt.to_string() + " ")
                 .collect::<String>(),
-            self.version_info.loader.to_string()
+            self.version_info.loader
         )
     }
 }

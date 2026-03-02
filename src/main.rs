@@ -21,17 +21,16 @@ use argparse::Commands;
 use clap::Parser;
 use cli::{
     input::{confirm_input, query_pack, read_line_to_string},
-    interactions::{prompt_for, prompt_multiple, search_mods},
+    interactions::{prompt_for, search_mods},
 };
 use config::{configure, Configuration};
-use mc_info::{MCVersion, MVDescriptor, LOADER, VT};
+use mc_info::{Loader, MCVersion, MVDescriptor, VT};
 use mrapi::{client::ApiClient, defines::Version};
 use pack::{
     create_pack,
     pack::{Pack, PackAction},
     update_pack,
 };
-use reqwest::blocking::Client;
 
 fn main() {
     //variables set by arguments
@@ -194,8 +193,8 @@ fn main() {
 fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     let mut version_desc = MVDescriptor {
         mc_ver: MCVersion::new(),
-        version_types: vec![VT::RELEASE],
-        loader: LOADER::FABRIC,
+        version_types: vec![VT::Release],
+        loader: Loader::Fabric,
     };
 
     let abort_msg = "Aborting pack creation.";
@@ -212,10 +211,10 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
     version_desc.loader = match list_select(
         "Select a Modloader",
         &[
-            LOADER::FABRIC,
-            LOADER::QUILT,
-            LOADER::NEOFORGE,
-            LOADER::FORGE,
+            Loader::Fabric,
+            Loader::Quilt,
+            Loader::Neoforge,
+            Loader::Forge,
         ],
     ) {
         Some(loader) => loader,
@@ -225,7 +224,7 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
         }
     };
     version_desc.version_types =
-        match list_multi_select("Choose Version Types", &[VT::RELEASE, VT::BETA, VT::ALPHA]) {
+        match list_multi_select("Choose Version Types", &[VT::Release, VT::Beta, VT::Alpha]) {
             Some(vt) => vt,
             None => {
                 println!("{abort_msg}");
@@ -288,7 +287,7 @@ fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
                         }
                         Some('1') => {
                             println!("enter new version types for the Pack.");
-                            match list_multi_select("Enter new version types for the Pack.", &[VT::RELEASE, VT::BETA, VT::ALPHA]) {
+                            match list_multi_select("Enter new version types for the Pack.", &[VT::Release, VT::Beta, VT::Alpha]) {
                                 Some(vt) => {pack.version_info.version_types = vt},
                                 None => println!("Version Types not changed"),
                             };
@@ -297,10 +296,10 @@ fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
                             match list_select(
                                 "Please enter the loader you want to change to",
                                 &[
-                                    LOADER::FABRIC,
-                                    LOADER::QUILT,
-                                    LOADER::NEOFORGE,
-                                    LOADER::FORGE
+                                    Loader::Fabric,
+                                    Loader::Quilt,
+                                    Loader::Neoforge,
+                                    Loader::Forge
                                 ]
                             ) {
                                 Some(loader) => pack.version_info.loader = loader,
