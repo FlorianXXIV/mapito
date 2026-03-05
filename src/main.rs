@@ -152,26 +152,26 @@ fn main() {
 
     match &parser.command {
         Some(Commands::Pack(action)) => match action.pack_action {
-            PackAction::CREATE => pack_creation_loop(&api_client, &config),
-            PackAction::UPDATE => {
+            PackAction::Create => pack_creation_loop(&api_client, &config),
+            PackAction::Update => {
                 println!("Please enter the name of the Pack you want to Update");
                 let name = read_line_to_string();
                 update_pack(&api_client, name, &config).expect("update_pack");
             }
-            PackAction::MODIFY => pack_modification_loop(&api_client, &config),
-            PackAction::INSTALL => {
+            PackAction::Modify => pack_modification_loop(&api_client, &config),
+            PackAction::Install => {
                 if config.install_path.is_some() {
-                    let mut pack = query_pack(PackAction::INSTALL, &config);
+                    let mut pack = query_pack(PackAction::Install, &config);
                     pack.install(&api_client, &config);
                 } else {
                     eprintln!("No install path given")
                 }
             }
-            PackAction::REMOVE => {
-                let pack = query_pack(PackAction::REMOVE, &config);
+            PackAction::Remove => {
+                let pack = query_pack(PackAction::Remove, &config);
                 pack.remove(&config);
             }
-            PackAction::LIST => {
+            PackAction::List => {
                 list_packs(config);
             }
         },
@@ -241,7 +241,7 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
 }
 
 fn pack_modification_loop(client: &ApiClient, config: &Configuration) {
-    let mut pack = query_pack(PackAction::MODIFY, config);
+    let mut pack = query_pack(PackAction::Modify, config);
     loop {
         println!("{}", pack,);
         match prompt_for::<char>("choose a category to modify:\n0 - Name\n1 - Version Info\n\tMinecraft Version\n\tVersion Types\n\tLoader\n2 - Mods\n") {

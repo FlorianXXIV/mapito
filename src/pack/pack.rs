@@ -21,28 +21,28 @@ use crate::{
 #[derive(Debug, Clone, Subcommand)]
 pub enum PackAction {
     /// Create a new pack
-    CREATE,
+    Create,
     /// Update an existing pack
-    UPDATE,
+    Update,
     /// Modify an existing pack
-    MODIFY,
+    Modify,
     /// Install an existing pack
-    INSTALL,
+    Install,
     /// Remove an existing pack
-    REMOVE,
+    Remove,
     /// List all packs
-    LIST,
+    List,
 }
 
 impl Display for PackAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let to_display = match self {
-            PackAction::CREATE => "create",
-            PackAction::UPDATE => "update",
-            PackAction::MODIFY => "modify",
-            PackAction::INSTALL => "install",
-            PackAction::REMOVE => "remove",
-            PackAction::LIST => "list",
+            PackAction::Create => "create",
+            PackAction::Update => "update",
+            PackAction::Modify => "modify",
+            PackAction::Install => "install",
+            PackAction::Remove => "remove",
+            PackAction::List => "list",
         };
         write!(f, "{}", to_display)
     }
