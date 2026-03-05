@@ -9,7 +9,13 @@ use std::{
 };
 use toml::{self, Table};
 
-use crate::mc_info::{Loader, MCVersion, MCVersionUtils, VT};
+use crate::{
+    cli::{
+        input::confirm_input,
+        interactions::{list_select, prompt_for},
+    },
+    mc_info::{Loader, MCVersion, MCVersionUtils, LOADERS, VT},
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Configuration {
@@ -35,6 +41,30 @@ impl Display for Configuration {
             self.staging,
             self.install_path.clone().unwrap_or("none".to_string())
         )
+    }
+}
+
+impl Configuration {
+    pub fn new() -> Configuration {
+        Configuration {
+            release_type: VT::Release,
+            download_path: env::home_dir()
+                .unwrap()
+                .join(".minecraft/mods")
+                .to_str()
+                .unwrap()
+                .to_owned(),
+            pack_path: env::home_dir()
+                .unwrap()
+                .join(".config/mapito/packs")
+                .to_str()
+                .unwrap()
+                .to_owned(),
+            loader: Loader::Fabric,
+            mc_ver: MCVersion::latest(),
+            staging: 0,
+            install_path: None,
+        }
     }
 }
 
@@ -70,14 +100,15 @@ fn create_config() -> Result<File, std::io::Error> {
     };
     create_dir_all(config_dir.as_path())?;
     let mut config = File::create(config_dir.join("config.toml"))?;
-    let defaults = get_default_cfg();
-    write!(&mut config, "{}", toml::to_string(&defaults).unwrap())?;
+    let conf_val = conf_setup();
+    write!(&mut config, "{}", toml::to_string(&conf_val).unwrap())?;
 
+    let config = File::open(config_path().expect("config_path").as_path())?;
     Ok(config)
 }
 
 fn parse_config(body: String) -> Result<Configuration, String> {
-    let mut config = get_default_cfg();
+    let mut config = Configuration::new();
     let cfg_table = match body.parse::<Table>() {
         Ok(v) => v,
         Err(e) => return Err(e.message().to_string()),
@@ -99,26 +130,40 @@ fn parse_config(body: String) -> Result<Configuration, String> {
     Ok(config)
 }
 
-fn get_default_cfg() -> Configuration {
-    Configuration {
-        release_type: VT::Release,
-        download_path: env::home_dir()
-            .unwrap()
-            .join("Downloads")
-            .to_str()
-            .unwrap()
-            .to_owned(),
-        pack_path: env::home_dir()
-            .unwrap()
-            .join(".config/mapito/packs")
-            .to_str()
-            .unwrap()
-            .to_owned(),
-        loader: Loader::Fabric,
-        mc_ver: MCVersion::latest(),
-        staging: 0,
-        install_path: None,
+fn conf_setup() -> Configuration {
+    let mut default = Configuration::new();
+
+    println!("No config found, creating defaults:\n{default}");
+    println!("Modify defaults or Proceed");
+    if confirm_input() {
+        return default;
     }
+    match prompt_for::<String>("Which key do you want to change?")
+        .unwrap()
+        .trim()
+        .to_lowercase()
+        .replace(" ", "_")
+        .as_str()
+    {
+        "release_type" => default.release_type = prompt_for("Enter new release_type").unwrap(),
+        "loader" => default.loader = list_select("Select new Loader", LOADERS).unwrap(),
+        "download_path" => default.download_path = prompt_for("Enter new download_path").unwrap(),
+        "pack_path" => default.pack_path = prompt_for("Enter new pack_path").unwrap(),
+        "mc_ver" => default.mc_ver = prompt_for("Enter new minecraft version").unwrap(),
+        "staging" => {
+            default.staging = prompt_for(
+                "Enter if the modrinth api staging server should be used (0 or 1) (for testing)",
+            )
+            .unwrap()
+        }
+        "install_path" => {
+            default.install_path =
+                Some(prompt_for("Enter where mapito packs should install to.").unwrap())
+        }
+        _ => println!("input does not match any key"),
+    }
+
+    default
 }
 
 pub fn config_path() -> Result<PathBuf, String> {

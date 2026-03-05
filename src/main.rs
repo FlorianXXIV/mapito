@@ -13,6 +13,7 @@ use crate::{
     cli::interactions::{list_multi_select, list_select},
     client::Downloader,
     config::config_path,
+    mc_info::LOADERS,
     pack::pack::list_packs,
     util::byte_to_readable,
 };
@@ -208,15 +209,7 @@ fn pack_creation_loop(client: &ApiClient, config: &Configuration) {
             return;
         }
     };
-    version_desc.loader = match list_select(
-        "Select a Modloader",
-        &[
-            Loader::Fabric,
-            Loader::Quilt,
-            Loader::Neoforge,
-            Loader::Forge,
-        ],
-    ) {
+    version_desc.loader = match list_select("Select a Modloader", LOADERS) {
         Some(loader) => loader,
         None => {
             println!("{abort_msg}");
