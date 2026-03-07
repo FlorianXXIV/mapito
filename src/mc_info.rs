@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::mrapi::defines::Version;
 
+/// Const list of all available mod launchers
 pub const LOADERS: &[Loader; 4] = &[
     Loader::Fabric,
     Loader::Quilt,

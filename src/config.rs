@@ -138,31 +138,47 @@ fn conf_setup() -> Configuration {
     if confirm_input() {
         return default;
     }
-    match prompt_for::<String>("Which key do you want to change?")
-        .unwrap()
+    loop {
+        match list_select(
+            "Select what you want to modify",
+            &[
+                "Release Type",
+                "Loader",
+                "Download Path",
+                "Pack Path",
+                "Minecraft Version",
+                "Staging",
+                "Install Path",
+            ],
+        )
+        .unwrap_or("q")
         .trim()
         .to_lowercase()
         .replace(" ", "_")
         .as_str()
-    {
-        "release_type" => default.release_type = prompt_for("Enter new release_type").unwrap(),
-        "loader" => default.loader = list_select("Select new Loader", LOADERS).unwrap(),
-        "download_path" => default.download_path = prompt_for("Enter new download_path").unwrap(),
-        "pack_path" => default.pack_path = prompt_for("Enter new pack_path").unwrap(),
-        "mc_ver" => default.mc_ver = prompt_for("Enter new minecraft version").unwrap(),
-        "staging" => {
-            default.staging = prompt_for(
+        {
+            "release_type" => default.release_type = prompt_for("Enter new release_type").unwrap(),
+            "loader" => default.loader = list_select("Select new Loader", LOADERS).unwrap(),
+            "download_path" => {
+                default.download_path = prompt_for("Enter new download_path").unwrap();
+            }
+            "pack_path" => default.pack_path = prompt_for("Enter new pack_path").unwrap(),
+            "minecraft_version" => {
+                default.mc_ver = prompt_for("Enter new minecraft version").unwrap()
+            }
+            "staging" => default.staging = prompt_for(
                 "Enter if the modrinth api staging server should be used (0 or 1) (for testing)",
             )
-            .unwrap()
+            .unwrap(),
+            "install_path" => {
+                default.install_path =
+                    Some(prompt_for("Enter where mapito packs should install to.").unwrap())
+            }
+            "q" => break,
+            _ => panic!("Incorrect input"), //Should not be reached
         }
-        "install_path" => {
-            default.install_path =
-                Some(prompt_for("Enter where mapito packs should install to.").unwrap())
-        }
-        _ => println!("input does not match any key"),
     }
-
+    println!("Saving config with Values:\n{default}");
     default
 }
 
