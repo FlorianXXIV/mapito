@@ -4,6 +4,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::mrapi::defines::Version;
 
+/// Const list of all available mod launchers
+pub const LOADERS: &[Loader; 4] = &[
+    Loader::Fabric,
+    Loader::Quilt,
+    Loader::Neoforge,
+    Loader::Forge,
+];
+
 /// Provide functionality for interacting with minecraft versions
 pub trait MCVersionUtils {
     /// check if the version is set to be the latest version.

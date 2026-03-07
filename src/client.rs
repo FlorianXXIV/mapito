@@ -26,7 +26,7 @@ impl Downloader for Client {
         let hx_hash = base16ct::lower::encode_string(&dl_hash);
         if hx_hash == hash {
             println!("Integrity check passed.");
-            let _ = std::fs::write(path, &body).unwrap();
+            std::fs::write(path, &body).unwrap();
         } else {
             println!("Integrity check failed.");
             return Err(ApiError::not_found());

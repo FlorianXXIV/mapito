@@ -11,13 +11,7 @@ pub fn search_mods(client: &ApiClient, version_desc: Option<&MVDescriptor>) -> V
 
     let mut mods: Vec<String> = Vec::new();
 
-    loop {
-        let query = match prompt_for::<String>("Please enter next query") {
-            Some(q) => q,
-            None => {
-                break;
-            }
-        };
+    while let Some(query) = prompt_for::<String>("Please enter next query") {
         match query_reader(&query, client, version_desc) {
             Ok(slug) => mods.push(slug),
             Err(e) => println!("{}", e),
@@ -93,13 +87,7 @@ pub fn list_multi_select<T: Display + Copy>(prompt: &str, options: &[T]) -> Opti
         selected.push(false);
         println!("[ ] [{i}]: {t}");
     }
-    loop {
-        let j = match prompt_for::<usize>("Select an Option") {
-            Some(n) => n,
-            None => {
-                break;
-            }
-        };
+    while let Some(j) = prompt_for::<usize>("Select an Option") {
         selected[j] = !selected[j];
         for (i, t) in options.iter().enumerate() {
             if selected[i] {
