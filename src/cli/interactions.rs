@@ -109,7 +109,7 @@ pub fn list_multi_select<T: Display + Copy>(prompt: &str, options: &[T]) -> Opti
     }
 }
 
-fn query_reader(
+pub fn query_reader(
     query: &String,
     client: &ApiClient,
     version_desc: Option<&MVDescriptor>,

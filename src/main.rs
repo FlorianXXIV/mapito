@@ -10,7 +10,7 @@ mod util;
 use std::{env::var, os::unix::process::CommandExt, process::Command};
 
 use crate::{
-    cli::interactions::{list_multi_select, list_select},
+    cli::interactions::{list_multi_select, list_select, query_reader},
     client::Downloader,
     config::config_path,
     mc_info::LOADERS,
@@ -41,17 +41,26 @@ fn main() {
     let api_client = ApiClient::new(parser.staging);
 
     if let Some(search) = parser.search {
-        api_client
-            .search(
-                &search,
-                None,
-                None,
-                &Some(vec![
-                    vec![("versions".to_string(), config.mc_ver.to_string())],
-                    vec![("categories".to_string(), config.loader.to_string())],
-                ]),
-            )
-            .expect("search");
+        println!(
+            "Results for {search} with params:\nLoader: {}\nMinecraft Version: {}\n",
+            config.loader, config.mc_ver
+        );
+        let slug = match query_reader(
+            &search,
+            &api_client,
+            Some(&MVDescriptor {
+                mc_ver: config.mc_ver,
+                version_types: vec![VT::Release, VT::Beta, VT::Alpha],
+                loader: config.loader,
+            }),
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                println!("{}", e);
+                return;
+            }
+        };
+        api_client.print_project_info(&slug);
         return;
     }
 
